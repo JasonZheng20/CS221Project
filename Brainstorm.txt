@@ -1,0 +1,10 @@
+Brainstorm Ideas
+
+Directions:
+We want to create a project based around something that has a lot of training data
+1. Music Based
+2. Image Based
+3. NLP Based
+
+Alternative:
+4. ML-based tutorer
