@@ -3,8 +3,27 @@ Brainstorm Ideas
 Directions:
 We want to create a project based around something that has a lot of training data
 1. Music Based
+  -Classifying Genres
+  -Guess if user likes a song
+  -Chatbot recommend songs
+  -(***)Application with seed playlist of songs
+    -Classify alot of songs into genres, or create a tool to determine similarity between songs
+    -metadata on songs from itunes or spodify
+    -Start with a playlist of songs
+    -Based on whether user likes songs or not (weighted skipping/rating)
+      -Determine more songs to add to the playlist
+      -Extra: (be able to export playlist)
+            -be able to do it just from listening to music, not knowing the song and its metadata
 2. Image Based
+  -Recycling classifier
+  -Classify location given pictures
+  -Cuisine Classifier
+  -Restaurant Recommender
+  -Instagram best photo
 3. NLP Based
+  -Paper to Copy/Pastable text
+  -Chrome Extension, relevance to essay of random webpages detector/scorer
+
 
 Alternative:
 4. ML-based tutorer
