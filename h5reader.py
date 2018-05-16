@@ -12,6 +12,7 @@
 #TODO: idea, load in the background, in the foreground, only load as needed
 #-------------------------------------------------------------------------------
 import h5py
+import numpy as np
 
 #-------------------------------------------------------------------------------
 #getTrackidList()
@@ -21,9 +22,9 @@ import h5py
 def getTrackidList():
     ret = []
     f = open('./AdditionalFiles/subset_unique_tracks.txt', 'r')
-    # maxTracks = 10000 #FOR TESTING (4 seconds for 100, 11 seconds for 1,000, 1 min 56 sec for 10,000)
+    # maxTracks = 10000 #FOR TESTING (53 sec for 10,000)
     # i = 0 #FOR TESTING
-    for line in f:
+    for line in f.readlines():
         id = line[0:line.find('<SEP>')]
         ret.append(id)
         # i += 1 #FOR TESTING
@@ -51,7 +52,7 @@ class Song:
         self.title = "n/a"
         self.artistid = 0
         self.artistName = "n/a"
-        self.songid = "n/a"
+        # self.songid = "n/a"
         self.similarArtists = []
         self.duration = 0
         self.year = 0
@@ -70,27 +71,29 @@ class Song:
         print "TITLE: "  + str(self.title)
         print "ARTISTID: "  + str(self.artistid)
         print "ARTISTNAME: "  + str(self.artistName)
-        print "SONGID: "  + str(self.songid)
+        # print "SONGID: "  + str(self.songid)
         print "SIMILAR_ARTISTS: "  + str(self.similarArtists)
         print "DURATION: "  + str(self.duration)
         print "YEAR: "  + str(self.year)
         # print "TERMS: "  + str(self.terms)
         print "-----------------------------------------"
 
-    def populateFields(self):
+    def populateFields(self): #Currently only contains the most basic metadata
         filename = './data/'+ self.trackid[2] + '/' + self.trackid[3] + '/' + self.trackid[4] + '/' + self.trackid + ".h5"
-        f = h5py.File(filename, 'r')
+        f = h5py.File(filename, 'r') #introduce something to throw on failure
         metadata = f['metadata']
-        songMetaData = metadata['songs']
-        self.album = songMetaData.value[0][14]
-        self.title = songMetaData.value[0][18]
-        self.artistid = songMetaData.value[0][5]
-        self.artistName = songMetaData.value[0][9]
-        self.songid = songMetaData.value[0][17]
-        self.similarArtists = metadata['similar_artists'].value[0]
+        songMetaData = metadata['songs'].value[0]
+        self.album = songMetaData[14]
+        self.title = songMetaData[18]
+        self.artistid = songMetaData[5]
+        self.artistName = songMetaData[9]
+        # self.songid = songMetaData.value[0][17]
+        self.similarArtists = np.asarray(metadata['similar_artists'].value[0])
         # self.duration =
         self.year = f['musicbrainz']['songs'].value[0][1]
         # self.terms = metadata['artist_terms'].value[0] #add weight and frequency potentially
+
+        #TODO: MUSIC FEATURES
 
 #-------------------------------------------------------------------------------
 #populateSongs(songList)
@@ -99,15 +102,17 @@ class Song:
 #classes for all the songs in songList
 #-------------------------------------------------------------------------------
 def populateSongs(songList):
-    songObjectArr = []
+    songObjectArr = {}
     for song in songList:
         obj = Song(song)
         obj.populateFields()
-        songObjectArr.append(obj)
+        songObjectArr.update({song:obj})
     return songObjectArr
 
 #-------------------------------------------------------------------------------
 #Live Scripts to actually do stuff:
 #-------------------------------------------------------------------------------
+print "---------------------Reading Data from 10,000 songs---------------------"
 trackidList = getTrackidList()
 songsArray = populateSongs(trackidList)
+print "--------------------------Data Reading Complete--------------------------"
