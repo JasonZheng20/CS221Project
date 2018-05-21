@@ -8,36 +8,49 @@
 #populates Song classes for each of the 10,000 songs. Each song class contains
 #relevant feature information for clustering and training a Bayesian classifier
 
-#Approximate runtime of a single file open: 0.33 seconds TODO: speed this up
-#TODO: idea, load in the background, in the foreground, only load as needed
+#TODO LIST:
+#Write an initial all song clustering algorithm (one time) Keep track of whats in each cluster
+#Once we have centroids, only search closest cluster to song to find similar songs
+
+# I need cluster objects so james can update
+#Cluster of songs, centroids, and songs corresponding to centroid, (trackids in cluster)
+
+#When caching, write to file the centroid, and all trackids to centroid
+
 #-------------------------------------------------------------------------------
 import h5py
 import numpy as np
+import time
+import sys
+import re
+import pickle
 
 #-------------------------------------------------------------------------------
 #getTrackidList()
 
 #Creates a list of all trackid's for future use.
 #-------------------------------------------------------------------------------
-def getTrackidList():
+def getTrackidList(inputPath):
     ret = []
-    f = open('./AdditionalFiles/subset_unique_tracks.txt', 'r')
-    # maxTracks = 10000 #FOR TESTING (53 sec for 10,000)
-    # i = 0 #FOR TESTING
+    f = open(inputPath, 'r')
     for line in f.readlines():
-        id = line[0:line.find('<SEP>')]
+        id = line[0:18]
         ret.append(id)
-        # i += 1 #FOR TESTING
-        # if i == maxTracks: break #FOR TESTING
     return ret
 
 #-------------------------------------------------------------------------------
 #getTrackidFromTrackName(name)
 
 #The idea of this function is given the name of a song, get its trackid.
+#Assume that tracknames are perfectly formatted from playlist
 #-------------------------------------------------------------------------------
 def getTrackidFromTrackName(name):
-    pass
+    f = open('./AdditionalFiles/subset_unique_tracks.txt', 'r')
+    for line in f.readlines():
+        processed = re.split('<SEP>', line)
+        if processed[3].strip().lower() == name.lower():
+            return processed[1]
+    return "Could not find that song."
 
 #-------------------------------------------------------------------------------
 #class Song
@@ -103,16 +116,56 @@ class Song:
 #-------------------------------------------------------------------------------
 def populateSongs(songList):
     songObjectArr = {}
+    i= 0.
     for song in songList:
+        i += 1
         obj = Song(song)
         obj.populateFields()
         songObjectArr.update({song:obj})
+        sys.stdout.write("\r%d/10000 Songs Read" % i)
+        sys.stdout.flush()
     return songObjectArr
+
+#-------------------------------------------------------------------------------
+#save
+
+#Saves a python object songsDict under a pickle file with name name
+#-------------------------------------------------------------------------------
+def save(object, name):
+    with open(name + '.pkl', 'wb+') as f:
+        pickle.dump(object, f, pickle.HIGHEST_PROTOCOL)
+
+#-------------------------------------------------------------------------------
+#load
+
+#loads the pickle file with name name
+#-------------------------------------------------------------------------------
+def load(name):
+    with open(name + '.pkl', 'rb') as f:
+        return pickle.load(f)
+
+#-------------------------------------------------------------------------------
+#readAndSavePickle
+
+#reads a dataset of tracks
+#-------------------------------------------------------------------------------
+def readAndSavePickle(inputPath):
+    print "---------------------Reading Data from 10,000 songs---------------------"
+    trackidList = getTrackidList(inputPath)
+    songsArray = populateSongs(trackidList)
+    print "\n"
+    print "Saving songs in a pickle file..."
+    save(songsArray, "songsDict")
+    print "\n"
+    print "--------------------------Data Reading Complete--------------------------"
+    print "Access Songs data with songsArray[trackid]. This will return a Song class"
 
 #-------------------------------------------------------------------------------
 #Live Scripts to actually do stuff:
 #-------------------------------------------------------------------------------
-print "---------------------Reading Data from 10,000 songs---------------------"
-trackidList = getTrackidList()
-songsArray = populateSongs(trackidList)
-print "--------------------------Data Reading Complete--------------------------"
+# readAndSavePickle('./AdditionalFiles/subset_unique_tracks.txt')
+print "--------------------------Loading Data from Pickle--------------------------"
+newArray = load("songsDict")
+print "--------------------------Data Loading is Complete--------------------------"
+
+# print newArray['TRBGCWM12903CF5BF7'].title #FOR THE TEST
