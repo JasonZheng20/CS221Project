@@ -1,22 +1,38 @@
 import h5reader
 import random
 from collections import deque
-import math
 
 class Recommend:
 	def __init__(self, playList1, playList2):
+
+		#every single song that we have access to
 		track_list_id = getTrackList()
-		self.All_songs = populateSongs(track_list_id)
+		self.all_songs = populateSongs(track_list_id)
+
+		#playlist of first person
 		self.playList1 = playList1
+
+		#playlist of second individual
 		self.playList2 = playList2
+
+		#songs that have been recommended
 		self.combined_playlist = {}
+
+		#current song
 		self.current_song = None
 		#NOTE: we could have time into song as a field 
 		#but we can't play songs so it's a little difficult to use
+
+		#centroids, plus probability of choosing each centroid to find song
 		self.centroids1 = []
+		self.centroid1_prob = []
 		self.centroids2 = []
+		self.centroid2_prob = []
+
+		#probability of choosing a song using distribution 1, p_2 is 1 - p_1
 		self.prob_1 = .5
-		self.prob_2 = .5
+
+		#queue of recent songs to avoid recommending several songs in a row
 		self.recent_songs = deque()
 		self.new_cluster()
 
@@ -28,6 +44,7 @@ class Recommend:
 			centroids1.append(self.playList1[random.choice(playList1.keys())])
 			centroids2.append(self.playList2[random.choice(playList2.keys())])
 		self.cluster()
+		self.get_new_song()
 
 	# Call to cluster will update the two clusters formed from the different playlists
 	def cluster(self):
@@ -37,18 +54,24 @@ class Recommend:
 	#Clusters the given playlist with the combined playlist as well
 	#doesn't really work at the moment, need to account for number of times played
 	def cluster_playlist(self, playlist):
+		#start off temp playlist with just the combined playlist
 		temp_playlist = dict(self.combined_playlist)
-		added_playlist = {}
-		centroids = []
-		if(playList == 1):
+		added_playlist = {} #songs from original playlist
+		centroids = [] #previous centroids for this part
+		if(playList == 1): #first playlist
 			centroids = self.centroids1
 			added_playlist = self.playList1
-		else:
+		else: #second playlist
 			centroids = self.centroids2
 			added_playlist = self.playList2
+
+		#add our original playlist to the combined one
 		for key in added_playlist:
 			temp_playlist[key] = temp_playlist.get(key, 0) + added_playlist[key]
+
+		#cluster everything
 		for i in range(20):
+			#assign each song to a centroid
 			assignments = [[] for j in range(len(centroids))]
 			for j in range(len(temp_playlist)):
 				min_distance = -1
@@ -59,20 +82,28 @@ class Recommend:
 						min_distance = distance
 						min_centroid = k 
 				assignments[min_centroid].append(temp_playlist[j])
-			#assign each song to a centroid
-			new_centroids = [[] for j in range(len(centroids))]
-			totals = [len(assignments[j]) for j in range(len(centroids))]
+
+			#find centroid from assignments
+			new_centroids = [{} for j in range(len(centroids))]
 			for j in range(len(centroids)):
-				for k in range(totals[j]):
-					if(k == 0):
-						new_centroids[j]=assignments[j][k]
-					else:
-						new_centroids[j] = self.add(new_centroids[j],assignments[j][k])
-				new_centroids[j] = self.divide(new_centroids[j],totals[j])
+				new_centroids[j] = self.update_centroid(assignments[j])
 			if(new_centroids == centroids):
 				break
 			centroids = new_centroids
 			#set new values for centroid
+
+
+	#helper function to update a single centroid based on the assigned songs
+	def update_centroid(self, assigned):
+		new_centroid = {}
+		if(assigned == []):
+			return new_centroid
+		for song_id in assigned:
+			values = self.all_songs[song_id]
+			for value in values:
+				new_centroids[value] = new_centroids.get(value,0) + values[value]
+		return self.divide(new_centroid,len(assignedf))
+	
 
 	#helper function to divide every element by the total to get the average
 	def divide(self, song, factor):
@@ -80,20 +111,13 @@ class Recommend:
 			song[key] = song[key] / float(factor)
 		return song
 
-	#adds up the two songs
-	def add(self, song1, song2):
-		total = {}
-		for key in (set(song1.keys()) + set(song2.keys())):
-			total[key] = song1.get(key, 0) + song2.get(key, 0)
-		return total
-
 	#recommend a song
 	def get_new_song(self):
 		self.current_song = None
 
 	#find distance between two songs
 	def distance(self, song1, song2):
-		return math.abs(song1['year']-song2['year'])
+		return abs(song1['year']-song2['year'])
 
 	#actual call, to try to recommend a song after you play or skip a song
 	def recommend(self, action):
