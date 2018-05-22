@@ -99,9 +99,9 @@ class Recommend:
 		if(assigned == []):
 			return new_centroid
 		for song_id in assigned:
-			values = self.all_songs[song_id]
-			for value in values:
-				new_centroids[value] = new_centroids.get(value,0) + values[value]
+			song = self.all_songs[song_id]
+			new_centroid['year']+=song.year
+			
 		return self.divide(new_centroid,len(assignedf))
 	
 
@@ -116,8 +116,8 @@ class Recommend:
 		self.current_song = None
 
 	#find distance between two songs
-	def distance(self, song1, song2):
-		return abs(song1['year']-song2['year'])
+	def distance(self, centroid, song):
+		return abs(centroid['year']-song.year)
 
 	#actual call, to try to recommend a song after you play or skip a song
 	def recommend(self, action):
