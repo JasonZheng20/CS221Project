@@ -2,21 +2,7 @@
 #h5reader.py
 
 #IMPORTANT: PLACE THIS FILE IN THE ORIGIN FOLDER
-#folder that contains ADDITIONALFILES and DATA
-
-#This file recursively opens all h5 files in the data folder of the dataset and
-#populates Song classes for each of the 10,000 songs. Each song class contains
-#relevant feature information for clustering and training a Bayesian classifier
-
-#TODO LIST:
-#Write an initial all song clustering algorithm (one time) Keep track of whats in each cluster
-#Once we have centroids, only search closest cluster to song to find similar songs
-
-# I need cluster objects so james can update
-#Cluster of songs, centroids, and songs corresponding to centroid, (trackids in cluster)
-
-#When caching, write to file the centroid, and all trackids to centroid
-
+#This file contains code to load and save Song objects from song datasets
 #-------------------------------------------------------------------------------
 import h5py
 import numpy as np
@@ -24,6 +10,86 @@ import time
 import sys
 import re
 import pickle
+import random
+
+#-------------------------------------------------------------------------------
+# favoriteSong(cluster)
+
+#gets the lowest distance song to a centroid
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+# randomCentroids(songsDict, numCentroids)
+
+#Takes songsDict, and constructs numCentroids # of random centroids
+#-------------------------------------------------------------------------------
+def randomCentroids(songsDict, numCentroids):
+    centroids = []
+    for i in xrange(numCentroids):
+        centroids.append(songsDict[random.choice(songsDict.keys())]) #currently song obj
+    return centroids
+
+#-------------------------------------------------------------------------------
+#distanceSongs(song1, song2)
+
+#Takes two song objects and computes their distance
+#Currently computes distance solely by year
+#Distance metrics to add:
+#
+#1. Artist similarity
+#2. Same Album ( learn weights for that? )
+#3. Duration of song
+#4. Genre of song
+#5. terms (a bunch of strings, probably booleans again)
+
+#Extended metrics:
+#6. Max volume
+#7. Pitches (?)
+#8. Research dataset more
+#-------------------------------------------------------------------------------
+def distanceSongs(song1, song2):
+    #TODO DO A CHECK TO SEE IF YEAR (AND OTHER DATA FIELDS ARE UNINIT (0))
+    return abs(song1.year - song2.year)
+
+#-------------------------------------------------------------------------------
+#kMeansAllSongs(songsDict, numCentroids)
+
+#Takes a dictionary of trackid:Song object, and creates a clustering of similar
+#songs using K-means clustering algorithm.
+#currently storing each thing as the song object itself, due to computation ease
+#returns centroids and clusterings
+
+#TODO: update kMeans so that it works on an arbitrary number of fields, as described above
+#-------------------------------------------------------------------------------
+def kMeansAllSongs(songsDict, numCentroids = 5, T = 100000):
+    centroids = randomCentroids(songsDict, numCentroids)
+    for i in xrange(0, T):
+        assignments = [[] for j in range(len(centroids))] #each subarray is a cluster
+        for song in songsDict:
+            min_distance = float('inf')
+            min_centroid = 0
+            for k in xrange(0, len(centroids)):
+                if centroids[k] == CONST_FILLER_SONG: continue
+                distance = distanceSongs(centroids[k], songsDict[song]) #currently: song obj, song obj
+                if distance < min_distance:
+                    min_distance = distance
+                    min_centroid = k
+            assignments[min_centroid].append(songsDict[song]) #currently trackid
+        new_centroids = [CONST_FILLER_SONG for j in range(len(centroids))]
+        totals = [len(assignments[j]) for j in xrange(0, len(centroids))] #TODO THIS SECTION ONLY ASSUMES YEAR --------
+    	for j in xrange(0, len(centroids)): #look at a centroid (cluster)
+            if len(assignments[j]) == 0: continue #TODO THIS SHOULD POSSIBLY CHANGE?
+            clusterTotalYears = 0.
+            for k in xrange(0, totals[j]): #for each assignment in that cluster
+                clusterTotalYears += assignments[j][k].year
+            avgYear = clusterTotalYears / totals[j]
+            newCentroid = Song('nan')
+            newCentroid.year = avgYear #TODO SHOULD I DO INT? OR NA
+            new_centroids[j] = newCentroid
+        if new_centroids == centroids: #uh oh this might not work since im comparing objects with instances
+            break
+        centroids = new_centroids
+    return centroids, assignments
 
 #-------------------------------------------------------------------------------
 #getTrackidList()
@@ -65,10 +131,9 @@ class Song:
         self.title = "n/a"
         self.artistid = 0
         self.artistName = "n/a"
-        # self.songid = "n/a"
         self.similarArtists = []
         self.duration = 0
-        self.year = 0
+        self.year = 0 #<=============currently being used
         # self.terms = []
 
         # self.maxLoudness = 0
@@ -84,7 +149,6 @@ class Song:
         print "TITLE: "  + str(self.title)
         print "ARTISTID: "  + str(self.artistid)
         print "ARTISTNAME: "  + str(self.artistName)
-        # print "SONGID: "  + str(self.songid)
         print "SIMILAR_ARTISTS: "  + str(self.similarArtists)
         print "DURATION: "  + str(self.duration)
         print "YEAR: "  + str(self.year)
@@ -100,13 +164,18 @@ class Song:
         self.title = songMetaData[18]
         self.artistid = songMetaData[5]
         self.artistName = songMetaData[9]
-        # self.songid = songMetaData.value[0][17]
         self.similarArtists = np.asarray(metadata['similar_artists'].value[0])
         # self.duration =
         self.year = f['musicbrainz']['songs'].value[0][1]
         # self.terms = metadata['artist_terms'].value[0] #add weight and frequency potentially
 
         #TODO: MUSIC FEATURES
+
+    def __eq__(self, other): #TODO: FOR NOW ONLY CHECKS YEAR EQUIVALENCE
+        return self.year == other.year
+
+    def __ne__(self,other):
+        return self.year != other.year
 
 #-------------------------------------------------------------------------------
 #populateSongs(songList)
@@ -164,8 +233,15 @@ def readAndSavePickle(inputPath):
 #Live Scripts to actually do stuff:
 #-------------------------------------------------------------------------------
 # readAndSavePickle('./AdditionalFiles/subset_unique_tracks.txt')
-print "--------------------------Loading Data from Pickle--------------------------"
-newArray = load("songsDict")
-print "--------------------------Data Loading is Complete--------------------------"
+CONST_FILLER_SONG = Song('filler')
+CONST_FILLER_SONG.year = float('inf')
 
-# print newArray['TRBGCWM12903CF5BF7'].title #FOR THE TEST
+print "-----------------------Loading Song Data from Pickle------------------------"
+newDict = load("songsDict")
+print "--------------------------Data Loading is Complete--------------------------"
+centroids, assignments = kMeansAllSongs(newDict, 5) #the centroids are not always the same for year
+#each centroid is a Song object. Each element in assignments is an array of Song objects
+#might need to change this so that trackid is readily accessible
+
+for centroid in centroids: #To see what the years are for the centroids
+    print centroid.year
