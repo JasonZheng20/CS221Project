@@ -41,9 +41,6 @@ def constructCentroid(avgFieldsDict):
         newCentroid[field] = avgFieldsDict[field]
     return newCentroid
 
-def sigmoid(x):
-  return 1 / (1 + math.exp(-x))
-
 #-------------------------------------------------------------------------------
 #distanceSongs(song1, song2)
 
@@ -51,6 +48,7 @@ def sigmoid(x):
 #Currently computes distance solely by year
 #TODO: Create an algorithm to be able to weight all of the terms properly to get accurate distances
 #TODO: We don't really have labeled data for song distance, so it will have to be unsupervised(?)
+#TODO: FIND A WAY TO NORMALIZE OTHER THAN SIGMOID WHICH ODESNT WORK, COSINE?
 #-------------------------------------------------------------------------------
 def distanceSongs(song1, song2):
     #TODO DO A CHECK TO SEE IF YEAR (AND OTHER DATA FIELDS ARE UNINIT (0))
@@ -73,10 +71,10 @@ def distanceSongs(song1, song2):
         # distance += 1.2*sigmoid(song1.mode - song2.mode)
         # distance += 4*sigmoid(song1.tempo - song2.tempo)
         # distance += sigmoid(song1.timeSigniature - song2.timeSigniature)
-        #Using sigmoid fails to cluster them
+        #TODO Using sigmoid fails to cluster them
     #TODO TRAIN COEFFICIENTS THAT GIVE US THE MOST CONSISTENT CLUSTERINGS ACROSS K-MEANS RUNS (AKA for each clustering, get closest clustering in other trial, and minimize distance)
-    distance = 1.2*abs(song1.year - song2.year)
-    distance += 2*abs(song1.duration - song2.duration)
+    distance = 1.8*abs(song1.year - song2.year)
+    distance += 1.3*abs(song1.duration - song2.duration)
     distance += abs(song1.key - song2.key)
     distance += 3*abs(song1.generalLoudness - song2.generalLoudness)
     distance += abs(song1.mode - song2.mode)
@@ -243,6 +241,9 @@ class Song:
         print "TIME_SIG_CONFIDENCE: " + str(self.timeSigniatureConfidence)
         print "-----------------------------------------"
 
+    def concisePrint(self):
+        print [self.duration, self.year, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]
+
     def populateFields(self):
         filename = './data/'+ self.trackid[2] + '/' + self.trackid[3] + '/' + self.trackid[4] + '/' + self.trackid + ".h5"
         f = h5py.File(filename, 'r')
@@ -332,6 +333,23 @@ def readAndSavePickle(inputPath):
     print "Access Songs data with songsArray[trackid]. This will return a Song class"
 
 #-------------------------------------------------------------------------------
+#learnDistanceWeights()
+
+#Function to learn distance weights for K-means computation to minimize variance
+#of clustering across K-means computations. This is to ensure that we have most
+#accurate clusterings possible.
+#TODO: Implement this algorithm
+#-------------------------------------------------------------------------------
+def learnDistanceWeights():
+    #for some number of trials
+    #get number of things in each cluster
+        #minimize variance across trials of number of things
+            #sort the number in each cluster in increasing order, pairwise euclidean distance calc
+        #it should follow that the actual centroids will then be more consistent TODO: verify this intuition is correct
+    #Can incorporate confidence fields to make this more accurate
+    pass
+
+#-------------------------------------------------------------------------------
 #Live Scripts to actually do stuff:
 #-------------------------------------------------------------------------------
 # readAndSavePickle('./AdditionalFiles/subset_unique_tracks.txt') #(~1 min 50 seconds)
@@ -341,15 +359,18 @@ CONST_FILLER_SONG.year = float('inf')
 print "-----------------------Loading Song Data from Pickle------------------------"
 newDict = load("songsDict")
 print "--------------------------Data Loading is Complete--------------------------"
-centroids, assignments = kMeansAllSongs(newDict, 5, 1000) #the centroids are not always the same for year
-# #each centroid is a Song object. Each element in assignments is an array of Song objects
-# #might need to change this so that trackid is readily accessible
-#
-for subArr in assignments:
-    print len(subArr)
-i=0
-# for centroid in centroids: #To see what the centroids are
-#     print "CENTROID #" + str(i)
-#     centroid.printSong()
-#     i += 1
+for j in xrange(0, 50):
+    print "---New K-means Trial---"
+    centroids, assignments = kMeansAllSongs(newDict, 5, 1000) #the centroids are not always the same for year
+    # #each centroid is a Song object. Each element in assignments is an array of Song objects
+    # #might need to change this so that trackid is readily accessible
+    #
+    for subArr in assignments:
+        print len(subArr)
+    i=0
+    print '[self.duration, self.year, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]'
+    for centroid in centroids: #To see what the centroids are
+        print "CENTROID #" + str(i)
+        centroid.concisePrint()
+        i += 1
 #     print centroid.year
