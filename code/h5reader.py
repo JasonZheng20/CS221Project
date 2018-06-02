@@ -7,6 +7,7 @@ import h5py
 import numpy as np
 import time
 import sys
+import getopt
 import re
 import pickle
 import random
@@ -274,7 +275,6 @@ def populateSongs(songList):
         i += 1
         obj = Song(song)
         obj.populateFields()
-        # obj.printSong() #Take a look at this if you would like to further scrutinize extreme values
         songObjectArr.update({song:obj})
         sys.stdout.write("\r%d/10000 Songs Read" % i)
         sys.stdout.flush()
@@ -334,26 +334,30 @@ def learnDistanceWeights():
 #-------------------------------------------------------------------------------
 #Live Scripts to actually do stuff:
 #-------------------------------------------------------------------------------
-# readAndSavePickle('../data/MillionSongSubset/AdditionalFiles/subset_unique_tracks.txt') #(~1 min 50 seconds)
 CONST_FILLER_SONG = Song('filler')
 CONST_FILLER_SONG.year = float('inf')
 
-print "-----------------------Loading Song Data from Pickle------------------------"
-newDict = load("../songsDict")
-print "--------------------------Data Loading is Complete--------------------------"
-for j in xrange(0,1):
-# for j in xrange(0, 50):
-    print "---New K-means Trial---"
-    centroids, assignments = kMeansAllSongs(newDict, 5, 1000) #the centroids are not always the same for year
-    # #each centroid is a Song object. Each element in assignments is an array of Song objects
-    # #might need to change this so that trackid is readily accessible
-    #
-    for subArr in assignments:
-        print len(subArr)
-    i=0
-    print '[self.duration, self.year, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]'
-    for centroid in centroids: #To see what the centroids are
-        print "CENTROID #" + str(i)
-        centroid.concisePrint()
-        i += 1
-#     print centroid.year
+def main():
+    (options, args) = getopt.getopt(sys.argv[1:], 's')
+    if ('-s','') in options:
+        readAndSavePickle('../data/MillionSongSubset/AdditionalFiles/subset_unique_tracks.txt') #(~1 min 50 seconds)
+    print "-----------------------Loading Song Data from Pickle------------------------"
+    newDict = load("../songsDict")
+    print "--------------------------Data Loading is Complete--------------------------"
+    for j in xrange(0,1):
+        print "---New K-means Trial---"
+        centroids, assignments = kMeansAllSongs(newDict, 5, 1000) #the centroids are not always the same for year
+        # #each centroid is a Song object. Each element in assignments is an array of Song objects
+        # #might need to change this so that trackid is readily accessible
+        #
+        for subArr in assignments:
+            print len(subArr)
+        i=0
+        print '[self.duration, self.year, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]'
+        for centroid in centroids: #To see what the centroids are
+            print "CENTROID #" + str(i)
+            centroid.concisePrint()
+            i += 1
+
+if __name__ == "__main__":
+    main()
