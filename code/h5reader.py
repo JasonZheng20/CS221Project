@@ -199,9 +199,7 @@ class Song:
         self.artistid = "nan" #If not provided, it is 'nan'
         self.artistName = "n/a"
         self.similarArtists = []
-        self.terms = []
-        self.termWeights = []
-        self.termFrequencies = []
+        self.terms = {}
 
         #Numerical Fields
         self.duration = 0 #assume always provided
@@ -226,7 +224,6 @@ class Song:
         print "SIMILAR_ARTISTS: "  + str(self.similarArtists)
         print "DURATION: "  + str(self.duration)
         print "YEAR: "  + str(self.year)
-        print "TERMS: "  + str(self.terms)
         print "KEY: " + str(self.key)
         print "KEY_CONFIDENCE: " + str(self.keyConfidence)
         print "LOUDNESS: " + str(self.generalLoudness)
@@ -236,8 +233,6 @@ class Song:
         print "TIME_SIG: " + str(self.timeSigniature)
         print "TIME_SIG_CONFIDENCE: " + str(self.timeSigniatureConfidence)
         print "TERMS: " + str(self.terms)
-        print "TERM WEIGHTS: " + str(self.termWeights)
-        print "TERM FREQUENCIES: " + str(self.termFrequencies)
         print "-----------------------------------------"
 
     def concisePrint(self):
@@ -264,9 +259,11 @@ class Song:
         self.tempo = songsMeta[27]
         self.timeSigniature = songsMeta[28]
         self.timeSigniatureConfidence = songsMeta[29] #WHAT TO DO HERE
-        self.terms = metadata['artist_terms'].value #add weight and frequency potentially
-        self.termWeights = metadata['artist_terms_weight'].value
-        self.termFrequencies = metadata['artist_terms_freq'].value
+        temp_terms = metadata['artist_terms'].value 
+        temp_term_weight = metadata['artist_terms_weight'].value
+        temp_term_freq = metadata['artist_terms_freq'].value
+        for i in range(len(metadata['artist_terms'].value)):
+            self.terms[temp_terms[i]]=(temp_term_weight[i],temp_term_freq[i])
 
     def __eq__(self, other): #TODO: FOR NOW ONLY CHECKS YEAR EQUIVALENCE
 #------------------------------------------------------------------------------------
@@ -351,25 +348,26 @@ def learnDistanceWeights():
 #-------------------------------------------------------------------------------
 #Live Scripts to actually do stuff:
 #-------------------------------------------------------------------------------
-readAndSavePickle('../data/MillionSongSubset/AdditionalFiles/subset_unique_tracks.txt') #(~1 min 50 seconds)
+# readAndSavePickle('../data/MillionSongSubset/AdditionalFiles/subset_unique_tracks.txt') #(~1 min 50 seconds)
 CONST_FILLER_SONG = Song('filler')
 CONST_FILLER_SONG.year = float('inf')
 
 print "-----------------------Loading Song Data from Pickle------------------------"
 newDict = load("../songsDict")
 print "--------------------------Data Loading is Complete--------------------------"
-for j in xrange(0, 50):
-    print "---New K-means Trial---"
-    centroids, assignments = kMeansAllSongs(newDict, 5, 1000) #the centroids are not always the same for year
-    # #each centroid is a Song object. Each element in assignments is an array of Song objects
-    # #might need to change this so that trackid is readily accessible
-    #
-    for subArr in assignments:
-        print len(subArr)
-    i=0
-    print '[self.duration, self.year, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]'
-    for centroid in centroids: #To see what the centroids are
-        print "CENTROID #" + str(i)
-        centroid.concisePrint()
-        i += 1
+newDict[random.choice(newDict.keys())].printSong()
+# for j in xrange(0, 50):
+#     print "---New K-means Trial---"
+#     centroids, assignments = kMeansAllSongs(newDict, 5, 1000) #the centroids are not always the same for year
+#     # #each centroid is a Song object. Each element in assignments is an array of Song objects
+#     # #might need to change this so that trackid is readily accessible
+#     #
+#     for subArr in assignments:
+#         print len(subArr)
+#     i=0
+#     print '[self.duration, self.year, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]'
+#     for centroid in centroids: #To see what the centroids are
+#         print "CENTROID #" + str(i)
+#         centroid.concisePrint()
+#         i += 1
 #     print centroid.year
