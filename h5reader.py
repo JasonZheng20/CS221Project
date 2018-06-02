@@ -13,12 +13,6 @@ import pickle
 import random
 
 #-------------------------------------------------------------------------------
-# favoriteSong(cluster)
-
-#gets the lowest distance song to a centroid (fun function)
-#-------------------------------------------------------------------------------
-
-#-------------------------------------------------------------------------------
 #randomCentroids(songsDict, numCentroids)
 
 #Takes songsDict, and constructs numCentroids # of random centroids
@@ -206,6 +200,8 @@ class Song:
         self.artistName = "n/a"
         self.similarArtists = []
         self.terms = []
+        self.termWeights = []
+        self.termFrequencies = []
 
         #Numerical Fields
         self.duration = 0 #assume always provided
@@ -239,6 +235,9 @@ class Song:
         print "TEMPO: " + str(self.tempo)
         print "TIME_SIG: " + str(self.timeSigniature)
         print "TIME_SIG_CONFIDENCE: " + str(self.timeSigniatureConfidence)
+        print "TERMS: " + str(self.terms)
+        print "TERM WEIGHTS: " + str(self.termWeights)
+        print "TERM FREQUENCIES: " + str(self.termFrequencies)
         print "-----------------------------------------"
 
     def concisePrint(self):
@@ -266,8 +265,8 @@ class Song:
         self.timeSigniature = songsMeta[28]
         self.timeSigniatureConfidence = songsMeta[29] #WHAT TO DO HERE
         self.terms = metadata['artist_terms'].value #add weight and frequency potentially
-        #TODO: weight for terms
-        #TODO: frequency for terms
+        self.termWeights = metadata['artist_terms_weight'].value
+        self.termFrequencies = metadata['artist_terms_freq'].value
 
     def __eq__(self, other): #TODO: FOR NOW ONLY CHECKS YEAR EQUIVALENCE
 #------------------------------------------------------------------------------------
@@ -352,7 +351,7 @@ def learnDistanceWeights():
 #-------------------------------------------------------------------------------
 #Live Scripts to actually do stuff:
 #-------------------------------------------------------------------------------
-# readAndSavePickle('./AdditionalFiles/subset_unique_tracks.txt') #(~1 min 50 seconds)
+readAndSavePickle('./AdditionalFiles/subset_unique_tracks.txt') #(~1 min 50 seconds)
 CONST_FILLER_SONG = Song('filler')
 CONST_FILLER_SONG.year = float('inf')
 
