@@ -1,13 +1,13 @@
 #-------------------------------------------------------------------------------
 #h5reader.py
 
-#IMPORTANT: PLACE THIS FILE IN THE ORIGIN FOLDER
 #This file contains code to load and save Song objects from song datasets
 #-------------------------------------------------------------------------------
 import h5py
 import numpy as np
 import time
 import sys
+import getopt
 import re
 import pickle
 import random
@@ -113,13 +113,10 @@ def kMeansAllSongs(songsDict, numCentroids = 5, T = 1000):
             clusterTotalYears = 0.
             clusterTotalDuration = 0.
             clusterTotalKeys = 0.
-            #use keyConfidence somehow for weighting in distance function
             clusterTotalLoudness = 0.
             clusterTotalMode = 0.
-            #use modeConfidence
             clusterTotalTempo = 0.
             clusterTotalTimeSig = 0.
-            #use confidence
             #TODO: NESTED FOR LOOP INSTEAD, CHECK IF FIELD IS GIVEN BEFORE APPEND
             for k in xrange(0, totals[j]): #for each assignment in that cluster
                 #only do this if the field is given, for each field
@@ -205,13 +202,10 @@ class Song:
         self.duration = 0 #assume always provided
         self.year = 0 #If it is not provided, it is 0
         self.key = 0 #Same deal as mode, see below, though key can take on more values
-        self.keyConfidence = 0 #if 0.0 do not use self.key
         self.generalLoudness = 0 #assume it is always given
         self.mode = 0 #appears to always be 0 or 1, don't include if modeConfidence is 0.0
-        self.modeConfidence = 0 #if modeConfidence is 0.0, assume don't use mode info, even if provided TODO: experiment with using despite 0.0
         self.tempo = 0 #if not provided, it will be 0
         self.timeSigniature = 0 #if not provided it will be 0
-        self.timeSigniatureConfidence = 0 #if this is 0.0 do not use time sig
 
     #For debugging purposes
     def printSong(self):
@@ -225,18 +219,15 @@ class Song:
         print "DURATION: "  + str(self.duration)
         print "YEAR: "  + str(self.year)
         print "KEY: " + str(self.key)
-        print "KEY_CONFIDENCE: " + str(self.keyConfidence)
         print "LOUDNESS: " + str(self.generalLoudness)
         print "MODE: " + str(self.mode)
-        print "MODE_CONFIDENCE: " + str(self.modeConfidence)
         print "TEMPO: " + str(self.tempo)
         print "TIME_SIG: " + str(self.timeSigniature)
-        print "TIME_SIG_CONFIDENCE: " + str(self.timeSigniatureConfidence)
         print "TERMS: " + str(self.terms)
         print "-----------------------------------------"
 
     def concisePrint(self):
-        print [self.duration, self.year, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]
+        print [self.year, self.duration, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]
 
     def populateFields(self):
         filename = '../data/MillionSongSubset/data/'+ self.trackid[2] + '/' + self.trackid[3] + '/' + self.trackid[4] + '/' + self.trackid + ".h5"
@@ -252,10 +243,8 @@ class Song:
         self.duration = songsMeta[3]
         self.year = f['musicbrainz']['songs'].value[0][1]
         self.key = songsMeta[21]
-        self.keyConfidence = songsMeta[22] #WHAT TO DO HERE
         self.generalLoudness = songsMeta[23]
         self.mode = songsMeta[24]
-        self.modeConfidence = songsMeta[25] #WHAT TO DO HERE
         self.tempo = songsMeta[27]
         self.timeSigniature = songsMeta[28]
         self.timeSigniatureConfidence = songsMeta[29] #WHAT TO DO HERE
@@ -265,15 +254,11 @@ class Song:
         for i in range(len(metadata['artist_terms'].value)):
             self.terms[temp_terms[i]]=(temp_term_weight[i],temp_term_freq[i])
 
-    def __eq__(self, other): #TODO: FOR NOW ONLY CHECKS YEAR EQUIVALENCE
-#------------------------------------------------------------------------------------
-#TODO: Update this so equivalence requires all fields are equal
-#------------------------------------------------------------------------------------
-#DOESNT USE CONFIDENCES RN
+    def __eq__(self, other):
         return self.year == other.year and self.duration == other.duration and self.key == other.key and self.generalLoudness == other.generalLoudness and self.mode == other.mode and self.tempo == other.tempo and self.timeSigniature == other.timeSigniature
 
     def __ne__(self,other):
-        return self.year != other.year
+        return self.year == other.year or self.duration == other.duration or self.key == other.key or self.generalLoudness == other.generalLoudness or self.mode == other.mode or self.tempo == other.tempo or self.timeSigniature == other.timeSigniature
 
 #-------------------------------------------------------------------------------
 #populateSongs(songList)
@@ -288,7 +273,6 @@ def populateSongs(songList):
         i += 1
         obj = Song(song)
         obj.populateFields()
-        # obj.printSong() #Take a look at this if you would like to further scrutinize extreme values
         songObjectArr.update({song:obj})
         sys.stdout.write("\r%d/10000 Songs Read" % i)
         sys.stdout.flush()
@@ -348,26 +332,30 @@ def learnDistanceWeights():
 #-------------------------------------------------------------------------------
 #Live Scripts to actually do stuff:
 #-------------------------------------------------------------------------------
-# readAndSavePickle('../data/MillionSongSubset/AdditionalFiles/subset_unique_tracks.txt') #(~1 min 50 seconds)
 CONST_FILLER_SONG = Song('filler')
 CONST_FILLER_SONG.year = float('inf')
 
-print "-----------------------Loading Song Data from Pickle------------------------"
-newDict = load("../songsDict")
-print "--------------------------Data Loading is Complete--------------------------"
-newDict[random.choice(newDict.keys())].printSong()
-# for j in xrange(0, 50):
-#     print "---New K-means Trial---"
-#     centroids, assignments = kMeansAllSongs(newDict, 5, 1000) #the centroids are not always the same for year
-#     # #each centroid is a Song object. Each element in assignments is an array of Song objects
-#     # #might need to change this so that trackid is readily accessible
-#     #
-#     for subArr in assignments:
-#         print len(subArr)
-#     i=0
-#     print '[self.duration, self.year, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]'
-#     for centroid in centroids: #To see what the centroids are
-#         print "CENTROID #" + str(i)
-#         centroid.concisePrint()
-#         i += 1
-#     print centroid.year
+def main():
+    (options, args) = getopt.getopt(sys.argv[1:], 's')
+    if ('-s','') in options:
+        readAndSavePickle('../data/MillionSongSubset/AdditionalFiles/subset_unique_tracks.txt') #(~1 min 50 seconds)
+    print "-----------------------Loading Song Data from Pickle------------------------"
+    newDict = load("../songsDict")
+    print "--------------------------Data Loading is Complete--------------------------"
+    for j in xrange(0,1):
+        print "---New K-means Trial---"
+        centroids, assignments = kMeansAllSongs(newDict, 5, 1000) #the centroids are not always the same for year
+        # #each centroid is a Song object. Each element in assignments is an array of Song objects
+        # #might need to change this so that trackid is readily accessible
+        #
+        for subArr in assignments:
+            print len(subArr)
+        i=0
+        print '[self.duration, self.year, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]'
+        for centroid in centroids: #To see what the centroids are
+            print "CENTROID #" + str(i)
+            centroid.concisePrint()
+            i += 1
+
+if __name__ == "__main__":
+    main()
