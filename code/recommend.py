@@ -159,7 +159,11 @@ class Recommend:
            	new_centroid.timeSigniature += song.timeSigniature
            	totals['timeSigniature'] = totals.get('timeSigniature',0) + (song.timeSigniature>0)
 
-           	new_centroid.terms = list(set(new_centroid.terms)+set(song.terms))
+           	for term in song.terms.keys():
+           		song_val = song.terms[term]
+           		values = new_centroid.terms.get(term,(0,0))
+           		new_centroid.terms[term] = (song_val[0]+values[0], song_val[0]+values[1])
+           	totals['terms']= totals.get('terms',0)+1
 		return self.divide(new_centroid,totals)
 	
 
@@ -172,6 +176,9 @@ class Recommend:
 		song.mode = song.mode / float(max(1, factors['mode']))
 		song.tempo = song.tempo / float(max(1, factors['tempo']))
 		song.timeSigniature = song.timeSigniature / float(max(1, factors['timeSigniature']))
+		for term in song.terms.keys():
+			values = song.terms[term]
+			song.terms[term] = (values[0]/float(factors['terms']),values[1]/(factors['terms']))
 		return song
 
 	#recommend a song
@@ -231,10 +238,10 @@ class Recommend:
 
 	#distance between the terms of the two 
 	def term_distance(self, centroid, song):
-		cent_terms = set(centroid.terms)
-		song_terms = set(song.terms)
-		unified = cent_terms.intersection(song_terms)
-		return (len(unified)+1)/float(len(song_terms)+1)
+		cent_term_keys = set(centroid.terms.keys())
+		song_term_keys = set(song.terms.keys())
+		unified = cent_term_keys.intersection(song_term_keys)
+		return (len(unified)+1)/float(len(song_term_keys)+1)
 
 
 	#actual call, to try to recommend a song after you play or skip a song
@@ -275,15 +282,15 @@ for line in play:
 	playList2.append(line.rstrip())
 recommend = Recommend(playList1,playList2)
 current_song = recommend.current_song
-current_artist = recommended.current_artist
+current_artist = recommend.current_artist
 while(True):
-	choice = raw_input("Your current song is \"" + current_song + "\" by " + current_artist + "would you like to play or skip (enter quit to exit) ").lower()
+	choice = raw_input("Your current song is \"" + current_song + "\" by " + current_artist + " would you like to play or skip (enter quit to exit) ").lower()
 	if(choice == "quit"):
 		break
 	elif(choice == "play" or choice == "skip"):
 		recommend.recommend(choice)
 		current_song = recommend.current_song
-		current_artist = recommended.current_artist
+		current_artist = recommend.current_artist
 	else:
 		print("I'm sorry, you need to enter 'play' 'skip' or 'quit'")
 
