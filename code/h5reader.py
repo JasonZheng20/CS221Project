@@ -13,12 +13,6 @@ import pickle
 import random
 
 #-------------------------------------------------------------------------------
-# favoriteSong(cluster)
-
-#gets the lowest distance song to a centroid (fun function)
-#-------------------------------------------------------------------------------
-
-#-------------------------------------------------------------------------------
 #randomCentroids(songsDict, numCentroids)
 
 #Takes songsDict, and constructs numCentroids # of random centroids
@@ -108,7 +102,7 @@ def kMeansAllSongs(songsDict, numCentroids = 5, T = 1000):
             assignments[min_centroid].append(songsDict[song]) #currently trackid
         new_centroids = [CONST_FILLER_SONG for j in range(len(centroids))]
         totals = [len(assignments[j]) for j in xrange(0, len(centroids))] #TODO THIS SECTION ONLY ASSUMES YEAR --------
-    	for j in xrange(0, len(centroids)): #look at a centroid (cluster)
+        for j in xrange(0, len(centroids)): #look at a centroid (cluster)
             thisCluster = assignments[j]
             if len(thisCluster) == 0: continue
 
@@ -206,6 +200,8 @@ class Song:
         self.artistName = "n/a"
         self.similarArtists = []
         self.terms = []
+        self.termWeights = []
+        self.termFrequencies = []
 
         #Numerical Fields
         self.duration = 0 #assume always provided
@@ -239,6 +235,9 @@ class Song:
         print "TEMPO: " + str(self.tempo)
         print "TIME_SIG: " + str(self.timeSigniature)
         print "TIME_SIG_CONFIDENCE: " + str(self.timeSigniatureConfidence)
+        print "TERMS: " + str(self.terms)
+        print "TERM WEIGHTS: " + str(self.termWeights)
+        print "TERM FREQUENCIES: " + str(self.termFrequencies)
         print "-----------------------------------------"
 
     def concisePrint(self):
@@ -266,8 +265,8 @@ class Song:
         self.timeSigniature = songsMeta[28]
         self.timeSigniatureConfidence = songsMeta[29] #WHAT TO DO HERE
         self.terms = metadata['artist_terms'].value #add weight and frequency potentially
-        #TODO: weight for terms
-        #TODO: frequency for terms
+        self.termWeights = metadata['artist_terms_weight'].value
+        self.termFrequencies = metadata['artist_terms_freq'].value
 
     def __eq__(self, other): #TODO: FOR NOW ONLY CHECKS YEAR EQUIVALENCE
 #------------------------------------------------------------------------------------
@@ -327,7 +326,7 @@ def readAndSavePickle(inputPath):
     songsArray = populateSongs(trackidList)
     print "\n"
     print "Saving songs in a pickle file..."
-    save(songsArray, "songsDict")
+    save(songsArray, "../songsDict")
     print "\n"
     print "--------------------------Data Reading Complete--------------------------"
     print "Access Songs data with songsArray[trackid]. This will return a Song class"
@@ -352,26 +351,25 @@ def learnDistanceWeights():
 #-------------------------------------------------------------------------------
 #Live Scripts to actually do stuff:
 #-------------------------------------------------------------------------------
-# readAndSavePickle('../data/MillionSongSubset/AdditionalFiles/subset_unique_tracks.txt') #(~1 min 50 seconds)
+readAndSavePickle('../data/MillionSongSubset/AdditionalFiles/subset_unique_tracks.txt') #(~1 min 50 seconds)
 CONST_FILLER_SONG = Song('filler')
 CONST_FILLER_SONG.year = float('inf')
 
-# print "-----------------------Loading Song Data from Pickle------------------------"
-# newDict = load("../songsDict")
-# print "--------------------------Data Loading is Complete--------------------------"
-# for j in xrange(0, 50):
-#     print "---New K-means Trial---"
-#     centroids, assignments = kMeansAllSongs(newDict, 5, 1000) #the centroids are not always the same for year
-#     # #each centroid is a Song object. Each element in assignments is an array of Song objects
-#     # #might need to change this so that trackid is readily accessible
-#     #
-#     for subArr in assignments:
-#         print len(subArr)
-#     i=0
-#     print '[self.duration, self.year, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]'
-#     for centroid in centroids: #To see what the centroids are
-#         print "CENTROID #" + str(i)
-#         centroid.concisePrint()
-#         i += 1
+print "-----------------------Loading Song Data from Pickle------------------------"
+newDict = load("../songsDict")
+print "--------------------------Data Loading is Complete--------------------------"
+for j in xrange(0, 50):
+    print "---New K-means Trial---"
+    centroids, assignments = kMeansAllSongs(newDict, 5, 1000) #the centroids are not always the same for year
+    # #each centroid is a Song object. Each element in assignments is an array of Song objects
+    # #might need to change this so that trackid is readily accessible
+    #
+    for subArr in assignments:
+        print len(subArr)
+    i=0
+    print '[self.duration, self.year, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]'
+    for centroid in centroids: #To see what the centroids are
+        print "CENTROID #" + str(i)
+        centroid.concisePrint()
+        i += 1
 #     print centroid.year
-

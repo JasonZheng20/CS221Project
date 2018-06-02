@@ -18,7 +18,8 @@ class Recommend:
     	'generalLoudness':3,
     	'mode':1,
     	'tempo':3,
-    	'timeSigniature':1
+    	'timeSigniature':1,
+    	'terms':10
 	}
 
 	def __init__(self, playList1, playList2):
@@ -39,6 +40,7 @@ class Recommend:
 		#current song
 		self.current_song = ""
 		self.current_trackid = ""
+		self.current_artist = ""
 		#NOTE: we could have time into song as a field 
 		#but we can't play songs so it's a little difficult to use
 
@@ -156,6 +158,8 @@ class Recommend:
 
            	new_centroid.timeSigniature += song.timeSigniature
            	totals['timeSigniature'] = totals.get('timeSigniature',0) + (song.timeSigniature>0)
+
+           	new_centroid.terms = list(set(new_centroid.terms)+set(song.terms))
 		return self.divide(new_centroid,totals)
 	
 
@@ -175,9 +179,11 @@ class Recommend:
 		centroids = []
 		centroid_prob = []
 		if(random.random() > self.prob_1):
+			self.prob_1 +=.05
 			centroids = self.centroids2
 			centroid_prob = self.centroid2_prob
 		else:
+			self.prob_1 -=.05
 			centroids = self.centroids1
 			centroid_prob = self.centroid1_prob
 		choice = random.random()
@@ -206,6 +212,7 @@ class Recommend:
 				min_song = song
 
 		self.current_song = min_song.title
+		self.current_artist = min_song.artistName
 		self.current_trackid = min_song.trackid
 		self.recent_songs.popleft()
 		self.recent_songs.append(min_song.trackid)
@@ -219,7 +226,16 @@ class Recommend:
 		distance += self.thetas['mode']*abs(centroid.mode - song.mode)
 		distance += self.thetas['tempo']*abs(centroid.tempo - song.tempo)
 		distance += self.thetas['timeSigniature']*abs(centroid.timeSigniature - song.timeSigniature)
+		distance += self.thetas['terms']*self.term_distance(centroid, song)
 		return distance
+
+	#distance between the terms of the two 
+	def term_distance(self, centroid, song):
+		cent_terms = set(centroid.terms)
+		song_terms = set(song.terms)
+		unified = cent_terms.intersection(song_terms)
+		return (len(unified)+1)/float(len(song_terms)+1)
+
 
 	#actual call, to try to recommend a song after you play or skip a song
 	def recommend(self, action):
@@ -259,13 +275,15 @@ for line in play:
 	playList2.append(line.rstrip())
 recommend = Recommend(playList1,playList2)
 current_song = recommend.current_song
+current_artist = recommended.current_artist
 while(True):
-	choice = raw_input("Your current song is \"" + current_song + "\" would you like to play or skip (enter quit to exit) ").lower()
+	choice = raw_input("Your current song is \"" + current_song + "\" by " + current_artist + "would you like to play or skip (enter quit to exit) ").lower()
 	if(choice == "quit"):
 		break
 	elif(choice == "play" or choice == "skip"):
 		recommend.recommend(choice)
 		current_song = recommend.current_song
+		current_artist = recommended.current_artist
 	else:
 		print("I'm sorry, you need to enter 'play' 'skip' or 'quit'")
 
