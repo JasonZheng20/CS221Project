@@ -401,8 +401,24 @@ def learnDistanceWeights(songsDict):
     # weights = [0,0,0,0,0,0,0]
     weights = [1,1,1,1,1,1]
     # weights = [1,1,1,1,1,1,1]
-    calculateClusteringDeviation(songsDict, weights)
-
+    prev_distance = calculatePrimary(songsDict,weights)
+    iterations = 20
+    step_size = .01
+    weight_change = [step_size for j in range(len(weights))]
+    for i in range(iterations):
+        for j in range(len(weights)):
+            weights[j]+=weight_change[j]
+            distance = calculatePrimary(songsDict,weights)
+            value = if (weight_change[j]<0) -1 else 1
+            if(distance - prev_distance >0):
+                value = -1 * value
+            weight_change[j] = value*(step_size*iterations/(i+1))
+            prev_distance = distance
+        print prev_distance
+        print weights
+        print("\n")
+    print("It's the final weight\n")
+    print weights
 
 
     #gradient = loss using new param vs loss using prev param
