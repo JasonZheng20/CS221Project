@@ -48,17 +48,6 @@ def constructCentroid(d, k, l, m, t, s,terms):
     return newCentroid
 
 #-------------------------------------------------------------------------------
-#clusteringLoss()
-
-# We define clustering loss as x,
-# between each trial, we have a deviation x, which
-# is defined as the sum of all squared differences between #items in 5 clusters
-# divided by the number of trials.
-#-------------------------------------------------------------------------------
-# def clusteringLoss():
-
-
-#-------------------------------------------------------------------------------
 #distanceSongs(song1, song2)
 
 #Takes two song objects and computes their distance
@@ -90,21 +79,21 @@ def distanceSongs(song1, song2):
     # dataSetI = [song2.duration, song2.key, song2.generalLoudness, song2.mode, song2.tempo, song2.timeSigniature]
     # dataSetII = [song1.duration, song1.key, song1.generalLoudness, song1.mode, song1.tempo, song1.timeSigniature]
     # distance = 1 - spatial.distance.cosine(dataSetI, dataSetII)
-    distance += term_distance(song1,song2)
+    # distance += term_distance(song1,song2)
     return distance
 
 
-def term_distance(centroid, song):
-    cent_term_keys = set(centroid.terms.keys())
-    song_term_keys = set(song.terms.keys())
-    distance = 0.0
-    total = 0.0
-    for term in song_term_keys:
-        cent_val = centroid.terms.get(term, (0,0))
-        song_val = song.terms[term]
-        distance += sqrt((cent_val[0]-song_val[0])**2 + (cent_val[1]-song_val[1])**2)
-        total += 1
-    return distance/total
+# def term_distance(centroid, song):
+#     cent_term_keys = set(centroid.terms.keys())
+#     song_term_keys = set(song.terms.keys())
+#     distance = 0.0
+#     total = 0.0
+#     for term in song_term_keys:
+#         cent_val = centroid.terms.get(term, (0,0))
+#         song_val = song.terms[term]
+#         distance += sqrt((cent_val[0]-song_val[0])**2 + (cent_val[1]-song_val[1])**2)
+#         total += 1
+#     return distance/total
 
 #-------------------------------------------------------------------------------
 #kMeansAllSongs(songsDict, numCentroids)
@@ -171,11 +160,11 @@ def kMeansAllSongs(songsDict, numCentroids = 5, T = 1000):
                 if thisSong.timeSigniatureConfidence != 0:
                     clusterTotalTimeSig += thisSong.timeSigniature
                     numFieldsGiven[4] += 1
-                for term in thisSong.terms.keys():
-                    song_val = thisSong.terms[term]
-                    values = new_terms.get(term,(0,0))
-                    new_terms[term] = (song_val[0]+values[0], song_val[0]+values[1])
-                total_terms+=1
+                # for term in thisSong.terms.keys():
+                #     song_val = thisSong.terms[term]
+                #     values = new_terms.get(term,(0,0))
+                #     new_terms[term] = (song_val[0]+values[0], song_val[0]+values[1])
+                # total_terms+=1
             # avgYear = clusterTotalYears / numFieldsGiven[0]
             avgDuration = clusterTotalDuration / numFieldsGiven[1]
             avgKey = clusterTotalKeys / totals[j]
@@ -185,8 +174,8 @@ def kMeansAllSongs(songsDict, numCentroids = 5, T = 1000):
             avgTimeSig = clusterTotalTimeSig / numFieldsGiven[4]
 
 
-            
-            
+
+
             for term in new_terms.keys():
                 values = new_terms[term]
                 new_terms[term] = ((values[0]+.1)/total_terms,(values[1]+.1)/total_terms)
@@ -380,6 +369,28 @@ def readAndSaveClusters(songsDict):
     return centroids, assignments
 
 #-------------------------------------------------------------------------------
+#clusteringLoss()
+
+# We define clustering loss as x,
+# between each trial, we have a deviation x, which
+# is defined as the sum of all squared differences between #items in 5 clusters
+# divided by the number of trials.
+#-------------------------------------------------------------------------------
+def calculateClusteringDeviation(songsDict, weights):
+    deviation = 0.
+    centroids, assignments = kMeansAllSongs(songsDict, 5, 75, weights) #TODO
+    previous_assignmentLengths = sorted([len(cluster) for cluster in assignments])
+    print previous_assignmentLengths
+    for i in xrange(0,10):
+        centroids, assignments = kMeansAllSongs(songsDict, 5, 75, weights)
+        assignmentLengths = sorted([len(cluster) for cluster in assignments])
+        print assignmentLengths
+        for j in xrange(0,len(assignmentLengths)):
+            deviation += (assignmentLengths[j] - previous_assignmentLengths[j])**2
+        previous_assignmentLengths = assignmentLengths
+    print deviation
+
+#-------------------------------------------------------------------------------
 #learnDistanceWeights()
 
 #Function to learn distance weights for K-means computation to minimize variance
@@ -388,10 +399,13 @@ def readAndSaveClusters(songsDict):
 #TODO: Implement this algorithm
 #-------------------------------------------------------------------------------
 def learnDistanceWeights(songsDict):
-    for i in xrange(0,5):
-        centroids, assignments = kMeansAllSongs(songsDict, 5, 75)
-        assignmentLengths = sorted([len(cluster) for cluster in assignments])
-        print assignmentLengths
+    weights = [0,0,0,0,0]
+    calculateClusteringDeivation(songsDict, weights)
+
+
+
+    #gradient = loss using new param vs loss using prev param
+
     #for some number of trials
     #get number of things in each cluster
         #minimize variance across trials of number of things
