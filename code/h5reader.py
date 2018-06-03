@@ -29,10 +29,16 @@ def randomCentroids(songsDict, numCentroids):
 #Takes a dictionary indicating the average of all of the fields of all songs
 #in a cluster, and generates a new centroid Song containing that information
 #-------------------------------------------------------------------------------
-def constructCentroid(avgFieldsDict):
+# def constructCentroid(y, d, k, l, m, t, s):
+def constructCentroid(d, k, l, m, t, s):
     newCentroid = Song('centroid')
-    for field in avgFieldsDict:
-        newCentroid[field] = avgFieldsDict[field]
+    # newCentroid.year = y
+    newCentroid.duration = d
+    newCentroid.key = k
+    newCentroid.generalLoudness = l
+    newCentroid.mode = m
+    newCentroid.tempo = t
+    newCentroid.timeSigniature = s
     return newCentroid
 
 #-------------------------------------------------------------------------------
@@ -67,13 +73,19 @@ def distanceSongs(song1, song2):
         # distance += sigmoid(song1.timeSigniature - song2.timeSigniature)
         #TODO Using sigmoid fails to cluster them
     #TODO TRAIN COEFFICIENTS THAT GIVE US THE MOST CONSISTENT CLUSTERINGS ACROSS K-MEANS RUNS (AKA for each clustering, get closest clustering in other trial, and minimize distance)
-    distance = 1.8*abs(song1.year - song2.year)
+    distance = 0
+    # if song2.year != 0:
+    #     distance += 1.8*abs(song1.year - song2.year)
     distance += 1.3*abs(song1.duration - song2.duration)
-    distance += abs(song1.key - song2.key)
+    if song2.keyConfidence > 0:
+        distance += abs(song1.key - song2.key)
     distance += 3*abs(song1.generalLoudness - song2.generalLoudness)
-    distance += abs(song1.mode - song2.mode)
-    distance += 3*abs(song1.tempo - song2.tempo)
-    distance += abs(song1.timeSigniature - song2.timeSigniature)
+    if song2.modeConfidence > 0:
+        distance += abs(song1.mode - song2.mode)
+    if song2.tempo != 0:
+        distance += 3*abs(song1.tempo - song2.tempo)
+    if song2.timeSigniatureConfidence > 0:
+        distance += abs(song1.timeSigniature - song2.timeSigniature)
     return distance
 
 #-------------------------------------------------------------------------------
@@ -89,67 +101,58 @@ def distanceSongs(song1, song2):
 def kMeansAllSongs(songsDict, numCentroids = 5, T = 1000):
     centroids = randomCentroids(songsDict, numCentroids)
     for i in xrange(0, T):
-        assignments = [[] for j in range(len(centroids))] #each subarray is a cluster
+        assignments = [[] for j in range(len(centroids))]
         for song in songsDict:
             min_distance = float('inf')
             min_centroid = 0
             for k in xrange(0, len(centroids)):
                 if centroids[k] == CONST_FILLER_SONG: continue
-                distance = distanceSongs(centroids[k], songsDict[song]) #currently: song obj, song obj
+                distance = distanceSongs(centroids[k], songsDict[song])
                 if distance < min_distance:
                     min_distance = distance
                     min_centroid = k
             assignments[min_centroid].append(songsDict[song]) #currently trackid
         new_centroids = [CONST_FILLER_SONG for j in range(len(centroids))]
-        totals = [len(assignments[j]) for j in xrange(0, len(centroids))] #TODO THIS SECTION ONLY ASSUMES YEAR --------
+        totals = [len(assignments[j]) for j in xrange(0, len(centroids))]
         for j in xrange(0, len(centroids)): #look at a centroid (cluster)
             thisCluster = assignments[j]
             if len(thisCluster) == 0: continue
-
-
-            #------------------------------------------------------------------------------------
-            #TODO: Generalize the averaging to multiple fields, check for uninitialized values (see Song class for details)
-            #------------------------------------------------------------------------------------
-            clusterTotalYears = 0.
+            # clusterTotalYears = 0.
             clusterTotalDuration = 0.
             clusterTotalKeys = 0.
             clusterTotalLoudness = 0.
             clusterTotalMode = 0.
             clusterTotalTempo = 0.
             clusterTotalTimeSig = 0.
-            #TODO: NESTED FOR LOOP INSTEAD, CHECK IF FIELD IS GIVEN BEFORE APPEND
+            numFieldsGiven = [1,1,1,1,1]
             for k in xrange(0, totals[j]): #for each assignment in that cluster
-                #only do this if the field is given, for each field
                 thisSong = thisCluster[k]
-                clusterTotalYears += thisSong.year
+                # if thisSong.year != 0:
+                #     clusterTotalYears += thisSong.year
+                #     numFieldsGiven[0] += 1
                 clusterTotalDuration += thisSong.duration
-                clusterTotalKeys += thisSong.key
+                if thisSong.keyConfidence > 0:
+                    clusterTotalKeys += thisSong.key
+                    numFieldsGiven[1] += 1
                 clusterTotalLoudness += thisSong.generalLoudness
-                clusterTotalMode += thisSong.mode
-                clusterTotalTempo += thisSong.tempo
-                clusterTotalTimeSig += thisSong.timeSigniature
-            #TODO: INSTEAD OF TOTAL[j], it should be number of elements where the specific field is given
-            avgYear = clusterTotalYears / totals[j]
-            avgDuration = clusterTotalDuration / totals[j]
+                if thisSong.modeConfidence > 0:
+                    clusterTotalMode += thisSong.mode
+                    numFieldsGiven[2] += 1
+                if thisSong.tempo != 0:
+                    clusterTotalTempo += thisSong.tempo
+                    numFieldsGiven[3] += 1
+                if thisSong.timeSigniatureConfidence != 0:
+                    clusterTotalTimeSig += thisSong.timeSigniature
+                    numFieldsGiven[4] += 1
+            # avgYear = clusterTotalYears / numFieldsGiven[0]
+            avgDuration = clusterTotalDuration / numFieldsGiven[1]
             avgKey = clusterTotalKeys / totals[j]
             avgLoudness = clusterTotalLoudness / totals[j]
-            avgMode = clusterTotalMode / totals[j]
-            avgTempo = clusterTotalTempo / totals[j]
-            avgTimeSig = clusterTotalTimeSig / totals[j]
-            #TODO: I have implemented a constructCentroid function here that takes in a dict of values, use it
-            #------------------------------------------------------------------------------------
-            newCentroid = Song('nan')
-            newCentroid.year = avgYear
-            newCentroid.duration = avgDuration
-            newCentroid.key = avgKey
-            newCentroid.generalLoudness = avgLoudness
-            newCentroid.mode = avgMode
-            newCentroid.tempo = avgTempo
-            newCentroid.timeSigniature = avgTimeSig
-            #------------------------------------------------------------------------------------
-
-
-            new_centroids[j] = newCentroid
+            avgMode = clusterTotalMode / numFieldsGiven[2]
+            avgTempo = clusterTotalTempo / numFieldsGiven[3]
+            avgTimeSig = clusterTotalTimeSig / numFieldsGiven[4]
+            new_centroids[j] = constructCentroid(avgDuration, avgKey, avgLoudness, avgMode, avgTempo, avgTimeSig)
+            # new_centroids[j] = constructCentroid(avgYear, avgDuration, avgKey, avgLoudness, avgMode, avgTempo, avgTimeSig)
         if new_centroids == centroids:
             print "CONVERGENCE AFTER " + str(i) + " TRIALS"
             break
@@ -200,12 +203,15 @@ class Song:
 
         #Numerical Fields
         self.duration = 0 #assume always provided
-        self.year = 0 #If it is not provided, it is 0
+        # self.year = 0 #If it is not provided, it is 0
         self.key = 0 #Same deal as mode, see below, though key can take on more values
+        self.keyConfidence = 0 #if 0.0 do not use self.key
         self.generalLoudness = 0 #assume it is always given
         self.mode = 0 #appears to always be 0 or 1, don't include if modeConfidence is 0.0
+        self.modeConfidence = 0 #if modeConfidence is 0.0, assume don't use mode info
         self.tempo = 0 #if not provided, it will be 0
         self.timeSigniature = 0 #if not provided it will be 0
+        self.timeSigniatureConfidence = 0 #if this is 0.0 do not use time sig
 
     #For debugging purposes
     def printSong(self):
@@ -217,7 +223,7 @@ class Song:
         print "ARTISTNAME: "  + str(self.artistName)
         print "SIMILAR_ARTISTS: "  + str(self.similarArtists)
         print "DURATION: "  + str(self.duration)
-        print "YEAR: "  + str(self.year)
+        # print "YEAR: "  + str(self.year)
         print "KEY: " + str(self.key)
         print "LOUDNESS: " + str(self.generalLoudness)
         print "MODE: " + str(self.mode)
@@ -227,7 +233,8 @@ class Song:
         print "-----------------------------------------"
 
     def concisePrint(self):
-        print [self.year, self.duration, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]
+        # print [self.year, self.duration, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]
+        print [self.duration, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]
 
     def populateFields(self):
         filename = '../data/MillionSongSubset/data/'+ self.trackid[2] + '/' + self.trackid[3] + '/' + self.trackid[4] + '/' + self.trackid + ".h5"
@@ -241,24 +248,28 @@ class Song:
         self.artistName = songMetaData[9]
         self.similarArtists = np.asarray(metadata['similar_artists'].value[0])
         self.duration = songsMeta[3]
-        self.year = f['musicbrainz']['songs'].value[0][1]
+        # self.year = f['musicbrainz']['songs'].value[0][1]
         self.key = songsMeta[21]
+        self.keyConfidence = songsMeta[22] #WHAT TO DO HERE
         self.generalLoudness = songsMeta[23]
         self.mode = songsMeta[24]
+        self.modeConfidence = songsMeta[25] #WHAT TO DO HERE
         self.tempo = songsMeta[27]
         self.timeSigniature = songsMeta[28]
         self.timeSigniatureConfidence = songsMeta[29] #WHAT TO DO HERE
-        temp_terms = metadata['artist_terms'].value 
+        temp_terms = metadata['artist_terms'].value
         temp_term_weight = metadata['artist_terms_weight'].value
         temp_term_freq = metadata['artist_terms_freq'].value
         for i in range(len(metadata['artist_terms'].value)):
             self.terms[temp_terms[i]]=(temp_term_weight[i],temp_term_freq[i])
 
     def __eq__(self, other):
-        return self.year == other.year and self.duration == other.duration and self.key == other.key and self.generalLoudness == other.generalLoudness and self.mode == other.mode and self.tempo == other.tempo and self.timeSigniature == other.timeSigniature
+        # return self.year == other.year and self.duration == other.duration and self.key == other.key and self.generalLoudness == other.generalLoudness and self.mode == other.mode and self.tempo == other.tempo and self.timeSigniature == other.timeSigniature
+        return self.duration == other.duration and self.key == other.key and self.generalLoudness == other.generalLoudness and self.mode == other.mode and self.tempo == other.tempo and self.timeSigniature == other.timeSigniature
 
     def __ne__(self,other):
-        return self.year == other.year or self.duration == other.duration or self.key == other.key or self.generalLoudness == other.generalLoudness or self.mode == other.mode or self.tempo == other.tempo or self.timeSigniature == other.timeSigniature
+        return self.duration == other.duration or self.key == other.key or self.generalLoudness == other.generalLoudness or self.mode == other.mode or self.tempo == other.tempo or self.timeSigniature == other.timeSigniature
+        # return self.year == other.year or self.duration == other.duration or self.key == other.key or self.generalLoudness == other.generalLoudness or self.mode == other.mode or self.tempo == other.tempo or self.timeSigniature == other.timeSigniature
 
 #-------------------------------------------------------------------------------
 #populateSongs(songList)
@@ -313,6 +324,30 @@ def readAndSavePickle(inputPath):
     print "Access Songs data with songsArray[trackid]. This will return a Song class"
 
 #-------------------------------------------------------------------------------
+#readAndSaveClusters
+
+#runs K-means and saves a pickle file of the clusterings
+#-------------------------------------------------------------------------------
+def readAndSaveClusters(songsDict):
+    print "----------------------------Running K-means------------------------------"
+    centroids, assignments = kMeansAllSongs(songsDict, 5, 1000)
+    for subArr in assignments:
+        print len(subArr)
+    # i=0
+    # print '[self.year, self.duration, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]'
+    # for centroid in centroids: #To see what the centroids are
+    #     print "CENTROID #" + str(i)
+    #     centroid.concisePrint()
+    #     i += 1
+    print "---------------------------Completed K-means-----------------------------"
+    # print "----------------------Saving Clusterings to Pickle-----------------------"
+    # print "Saving clusters in a pickle file..."
+    # save(centroids, "../centroids")
+    # save(assignments, "../assignments")
+    # print "---------------------Done Saving Clusters to Pickle----------------------"
+    return centroids, assignments
+
+#-------------------------------------------------------------------------------
 #learnDistanceWeights()
 
 #Function to learn distance weights for K-means computation to minimize variance
@@ -336,26 +371,32 @@ CONST_FILLER_SONG = Song('filler')
 CONST_FILLER_SONG.year = float('inf')
 
 def main():
-    (options, args) = getopt.getopt(sys.argv[1:], 's')
-    if ('-s','') in options:
+    (options, args) = getopt.getopt(sys.argv[1:], 'sc')
+    if ('-s','') in options: #save the Songs Pickle
         readAndSavePickle('../data/MillionSongSubset/AdditionalFiles/subset_unique_tracks.txt') #(~1 min 50 seconds)
-    print "-----------------------Loading Song Data from Pickle------------------------"
-    newDict = load("../songsDict")
-    print "--------------------------Data Loading is Complete--------------------------"
-    for j in xrange(0,1):
-        print "---New K-means Trial---"
-        centroids, assignments = kMeansAllSongs(newDict, 5, 1000) #the centroids are not always the same for year
-        # #each centroid is a Song object. Each element in assignments is an array of Song objects
-        # #might need to change this so that trackid is readily accessible
-        #
-        for subArr in assignments:
-            print len(subArr)
-        i=0
-        print '[self.duration, self.year, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]'
-        for centroid in centroids: #To see what the centroids are
-            print "CENTROID #" + str(i)
-            centroid.concisePrint()
-            i += 1
+    elif ('-c', '') in options: #save the Clusters Pickle
+        print "-----------------------Loading Song Data from Pickle------------------------"
+        newDict = load("../songsDict")
+        print "--------------------------Data Loading is Complete--------------------------"
+        for i in xrange(0,10):
+            centroids, assignments = readAndSaveClusters(newDict)
+    else: #Load the Clusters Pickle
+        centroids = load("../centroids")
+        assignments = load("../assignments")
+    # for j in xrange(0,1):
+    #     print "---New K-means Trial---"
+    #     centroids, assignments = kMeansAllSongs(newDict, 5, 1000) #the centroids are not always the same for year
+    #     # #each centroid is a Song object. Each element in assignments is an array of Song objects
+    #     # #might need to change this so that trackid is readily accessible
+    #     #
+    #     for subArr in assignments:
+    #         print len(subArr)
+    #     i=0
+    #     print '[self.duration, self.year, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]'
+    #     for centroid in centroids: #To see what the centroids are
+    #         print "CENTROID #" + str(i)
+    #         centroid.concisePrint()
+    #         i += 1
 
 if __name__ == "__main__":
     main()
