@@ -3,6 +3,7 @@ import h5reader
 import random
 import h5py
 import numpy as np
+from math import sqrt
 import time
 import sys
 import re
@@ -55,7 +56,7 @@ class Recommend:
 
 		#queue of recent songs to avoid recommending several songs in a row
 		self.recent_songs = deque()
-		for i in range(20):
+		for i in range(50):
 			self.recent_songs.append("")
 		self.new_cluster()
 
@@ -209,18 +210,29 @@ class Recommend:
 			if(distance < min_distance):
 				min_distance=distance
 				min_index = i
-		min_distance = float('inf')
-		min_song = ""
+		best_songs = [("",float('inf')) for i in range(5)]
 		for song in self.all_song_assignments[min_index]:
 			distance = self.distance(song, chosen_centroid)
 			trackid = song.trackid
-			if(distance < min_distance and not trackid in self.recent_songs):
-				min_distance=distance
-				min_song = song
+			if(not trackid in self.recent_songs):
+				for i in range(len(best_songs)):
+					if(distance < best_songs[i][1]):
+						temp_song = song
+						temp_distance = distance
+						song = best_songs[i][0]
+						distance = best_songs[i][1]
+						best_songs[i] = (temp_song, temp_distance)
+		choice = random.random()
+		start = .5
+		index = 0
+		while(index < len(best_songs and start > choice)):
+			start = start/2
+			index += 1
+		best_song = best_songs[index][0]
 
-		self.current_song = min_song.title
-		self.current_artist = min_song.artistName
-		self.current_trackid = min_song.trackid
+		self.current_song = best_song.title
+		self.current_artist = best_song.artistName
+		self.current_trackid = best_song.trackid
 		self.recent_songs.popleft()
 		self.recent_songs.append(min_song.trackid)
 
@@ -240,8 +252,14 @@ class Recommend:
 	def term_distance(self, centroid, song):
 		cent_term_keys = set(centroid.terms.keys())
 		song_term_keys = set(song.terms.keys())
-		unified = cent_term_keys.intersection(song_term_keys)
-		return (len(unified)+1)/float(len(song_term_keys)+1)
+		distance = 0.0
+		total = 0.0
+		for term in song_term_keys:
+			cent_val = centroid.terms.get(term, (0,0))
+			song_val = song.terms[term]
+			distance += sqrt((cent_val[0]-song_val[0])**2 + (cent_val[1]-song_val[1])**2)
+			total += 1
+		return distance/total
 
 
 	#actual call, to try to recommend a song after you play or skip a song
