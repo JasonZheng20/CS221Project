@@ -34,10 +34,8 @@ def randomCentroids(songsDict, numCentroids):
 #Takes a dictionary indicating the average of all of the fields of all songs
 #in a cluster, and generates a new centroid Song containing that information
 #-------------------------------------------------------------------------------
-# def constructCentroid(y, d, k, l, m, t, s):
 def constructCentroid(d, k, l, m, t, s,terms):
     newCentroid = Song('centroid')
-    # newCentroid.year = y
     newCentroid.duration = d
     newCentroid.key = k
     newCentroid.generalLoudness = l
@@ -51,34 +49,19 @@ def constructCentroid(d, k, l, m, t, s,terms):
 #distanceSongs(song1, song2)
 
 #Takes two song objects and computes their distance
-#TODO: FOR NOW, JUST USING EUCLIDEAN DISTANCE WITH A TRAINED WEIGHT
 #-------------------------------------------------------------------------------
 def distanceSongs(song1, song2, weights):
-    #TODO TRAIN COEFFICIENTS THAT GIVE US THE MOST CONSISTENT CLUSTERINGS ACROSS K-MEANS RUNS (AKA for each clustering, get closest clustering in other trial, and minimize distance)
     distance = 0
-
-    # if song2.year != 0:
-    #     distance += 1.8*abs(song1.year - song2.year)
-
     distance += weights[0]*abs(song1.duration - song2.duration)
-    # distance += 20*sigmoid(song1.duration - song2.duration)
     if song2.keyConfidence > 0:
         distance += weights[1]*abs(song1.key - song2.key)
-        # distance += sigmoid(song1.key - song2.key)
     distance += weights[2]*abs(song1.generalLoudness - song2.generalLoudness)
-    # distance += 100*sigmoid(song1.generalLoudness - song2.generalLoudness)
     if song2.modeConfidence > 0:
-        # distance += sigmoid(song1.mode - song2.mode)
         distance += weights[3]*abs(song1.mode - song2.mode)
     if song2.tempo != 0:
-        # distance += sigmoid(song1.tempo - song2.tempo)
         distance += weights[4]*abs(song1.tempo - song2.tempo)
     if song2.timeSigniatureConfidence > 0:
-        # distance += sigmoid(song1.timeSigniature - song2.timeSigniature)
         distance += weights[5]*abs(song1.timeSigniature - song2.timeSigniature)
-    # dataSetI = [song2.duration, song2.key, song2.generalLoudness, song2.mode, song2.tempo, song2.timeSigniature]
-    # dataSetII = [song1.duration, song1.key, song1.generalLoudness, song1.mode, song1.tempo, song1.timeSigniature]
-    # distance = 1 - spatial.distance.cosine(dataSetI, dataSetII)
     distance += weights[6]*term_distance(song1,song2)
     return distance
 
@@ -107,7 +90,6 @@ def term_distance(centroid, song):
 def kMeansAllSongs(songsDict, weights, numCentroids = 5, T = 1000):
     centroids = randomCentroids(songsDict, numCentroids)
     for i in xrange(0, T):
-        # print "Iteration: " + str(i)
         assignments = [[] for j in range(len(centroids))]
         for song in songsDict:
             min_distance = float('inf')
@@ -119,17 +101,11 @@ def kMeansAllSongs(songsDict, weights, numCentroids = 5, T = 1000):
                     min_distance = distance
                     min_centroid = k
             assignments[min_centroid].append(songsDict[song]) #currently trackid
-
-        # print "Assignment numbers"
-        # for subArr in assignments:
-        #     print len(subArr)
-
         new_centroids = [CONST_FILLER_SONG for j in range(len(centroids))]
         totals = [len(assignments[j]) for j in xrange(0, len(centroids))]
         for j in xrange(0, len(centroids)): #look at a centroid (cluster)
             thisCluster = assignments[j]
             if len(thisCluster) == 0: continue
-            # clusterTotalYears = 0.
             clusterTotalDuration = 0.
             clusterTotalKeys = 0.
             clusterTotalLoudness = 0.
@@ -142,9 +118,6 @@ def kMeansAllSongs(songsDict, weights, numCentroids = 5, T = 1000):
             new_terms = {}
             for k in xrange(0, totals[j]): #for each assignment in that cluster
                 thisSong = thisCluster[k]
-                # if thisSong.year != 0:
-                #     clusterTotalYears += thisSong.year
-                #     numFieldsGiven[0] += 1
                 clusterTotalDuration += thisSong.duration
                 if thisSong.keyConfidence > 0:
                     clusterTotalKeys += thisSong.key
@@ -164,7 +137,6 @@ def kMeansAllSongs(songsDict, weights, numCentroids = 5, T = 1000):
                     values = new_terms.get(term,(0,0))
                     new_terms[term] = (song_val[0]+values[0], song_val[0]+values[1])
                 total_terms+=1
-            # avgYear = clusterTotalYears / numFieldsGiven[0]
             avgDuration = clusterTotalDuration / numFieldsGiven[1]
             avgKey = clusterTotalKeys / totals[j]
             avgLoudness = clusterTotalLoudness / totals[j]
@@ -180,7 +152,6 @@ def kMeansAllSongs(songsDict, weights, numCentroids = 5, T = 1000):
                 new_terms[term] = ((values[0]+.1)/total_terms,(values[1]+.1)/total_terms)
 
             new_centroids[j] = constructCentroid(avgDuration, avgKey, avgLoudness, avgMode, avgTempo, avgTimeSig, new_terms)
-            # new_centroids[j] = constructCentroid(avgYear, avgDuration, avgKey, avgLoudness, avgMode, avgTempo, avgTimeSig)
         if new_centroids == centroids:
             print "CONVERGENCE AFTER " + str(i) + " TRIALS"
             break
@@ -231,7 +202,6 @@ class Song:
 
         #Numerical Fields
         self.duration = 0 #assume always provided
-        # self.year = 0 #If it is not provided, it is 0
         self.key = 0 #Same deal as mode, see below, though key can take on more values
         self.keyConfidence = 0 #if 0.0 do not use self.key
         self.generalLoudness = 0 #assume it is always given
@@ -276,7 +246,6 @@ class Song:
         self.artistName = songMetaData[9]
         self.similarArtists = np.asarray(metadata['similar_artists'].value[0])
         self.duration = songsMeta[3]
-        # self.year = f['musicbrainz']['songs'].value[0][1]
         self.key = songsMeta[21]
         self.keyConfidence = songsMeta[22] #WHAT TO DO HERE
         self.generalLoudness = songsMeta[23]
@@ -292,12 +261,10 @@ class Song:
             self.terms[temp_terms[i]]=(temp_term_weight[i],temp_term_freq[i])
 
     def __eq__(self, other):
-        # return self.year == other.year and self.duration == other.duration and self.key == other.key and self.generalLoudness == other.generalLoudness and self.mode == other.mode and self.tempo == other.tempo and self.timeSigniature == other.timeSigniature
         return self.duration == other.duration and self.key == other.key and self.generalLoudness == other.generalLoudness and self.mode == other.mode and self.tempo == other.tempo and self.timeSigniature == other.timeSigniature
 
     def __ne__(self,other):
         return self.duration == other.duration or self.key == other.key or self.generalLoudness == other.generalLoudness or self.mode == other.mode or self.tempo == other.tempo or self.timeSigniature == other.timeSigniature
-        # return self.year == other.year or self.duration == other.duration or self.key == other.key or self.generalLoudness == other.generalLoudness or self.mode == other.mode or self.tempo == other.tempo or self.timeSigniature == other.timeSigniature
 
 #-------------------------------------------------------------------------------
 #populateSongs(songList)
@@ -352,19 +319,33 @@ def readAndSavePickle(inputPath):
     print "Access Songs data with songsArray[trackid]. This will return a Song class"
 
 #-------------------------------------------------------------------------------
+#succinctLoss()
+
+#Does the same as clusteringLoss without running k-means
+#-------------------------------------------------------------------------------
+def succinctLoss(assignments, numClusters):
+    unevenness = 0.
+    assignmentLengths = sorted([len(cluster) for cluster in assignments])
+    for j in xrange(0, len(assignments)):
+        unevenness += ((10000/numClusters)-assignmentLengths[j])**2
+    return unevenness
+
+#-------------------------------------------------------------------------------
 #readAndSaveClusters
 
 #runs K-means and saves a pickle file of the clusterings
 #-------------------------------------------------------------------------------
-def readAndSaveClusters(songsDict):
+def readAndSaveClusters(songsDict, numClusters = 5):
     print "----------------------------Running K-means------------------------------"
-    centroids, assignments = kMeansAllSongs(songsDict, 5, 75)
+    weightsFromLearn = [-0.060030265506692514, -0.44383045710403024, 3.4490915718474104, 3.695904771678345, 4.6554185014126634, 5.0456856919515936, 3.139756095232522]
+    centroids, assignments = kMeansAllSongs(songsDict, weightsFromLearn, numClusters, 75)
+    loss = succinctLoss(assignments, numClusters)
+    print "Clustered with Loss: " + str(loss)
     print "---------------------------Completed K-means-----------------------------"
-    # print "----------------------Saving Clusterings to Pickle-----------------------"
-    # print "Saving clusters in a pickle file..."
-    # save(centroids, "../centroids")
-    # save(assignments, "../assignments")
-    # print "---------------------Done Saving Clusters to Pickle----------------------"
+    print "----------------------Saving Clusterings to Pickle-----------------------"
+    save(centroids, "../centroids")
+    save(assignments, "../assignments")
+    print "---------------------Done Saving Clusters to Pickle----------------------"
     return centroids, assignments
 
 #-------------------------------------------------------------------------------
@@ -377,13 +358,15 @@ def readAndSaveClusters(songsDict):
 #-------------------------------------------------------------------------------
 def calculateClusteringDeviation(songsDict, weights):
     numClusters = 5
-    deviation = 0.
     unevenness = 0.
     centroids, assignments = kMeansAllSongs(songsDict, weights, numClusters, 75)
     previous_assignmentLengths = sorted([len(cluster) for cluster in assignments])
     for j in xrange(0, len(assignments)):
         unevenness += ((10000/numClusters)-previous_assignmentLengths[j])**2
-    print previous_assignmentLengths #comment out when ready
+    return unevenness
+
+#DEPRECATED: Calculate consistency:
+    # print previous_assignmentLengths #comment out when ready
     # for i in xrange(0,5):
     #     centroids, assignments = kMeansAllSongs(songsDict, weights, 5, 75)
     #     assignmentLengths = sorted([len(cluster) for cluster in assignments])
@@ -392,20 +375,15 @@ def calculateClusteringDeviation(songsDict, weights):
     #         deviation += (assignmentLengths[j] - previous_assignmentLengths[j])**2
     #         unevenness += ((10000/numClusters)-assignmentLengths[j])**2
     #     previous_assignmentLengths = assignmentLengths
-    print deviation + unevenness #comment out when ready
-    return deviation + unevenness
-
+    # print unevenness #comment out when ready
 #-------------------------------------------------------------------------------
 #learnDistanceWeights()
 
 #Function to learn distance weights for K-means computation to minimize variance
 #of clustering across K-means computations. This is to ensure that we have most
 #accurate clusterings possible.
-#TODO: Implement this algorithm
 #-------------------------------------------------------------------------------
 def learnDistanceWeights(songsDict):
-    # weights = [0,0,0,0,0,0,0]
-    # weights = [1,1,1,1,1,1]
     weights = [-0.060030265506692514, -0.44383045710403024, 3.4490915718474104, 3.695904771678345, 4.6554185014126634, 5.0456856919515936, 3.139756095232522]
     prev_distance = calculateClusteringDeviation(songsDict,weights)
     print("previous best weights: "+str(weights))
@@ -436,54 +414,41 @@ def learnDistanceWeights(songsDict):
     print("time for the best weights\n")
     print best_weights
 
-    #gradient = loss using new param vs loss using prev param
-
-    #for some number of trials
-    #get number of things in each cluster
-        #minimize variance across trials of number of things
-            #sort the number in each cluster in increasing order, pairwise euclidean distance calc
-        #it should follow that the actual centroids will then be more consistent TODO: verify this intuition is correct
-    #Can incorporate confidence fields to make this more accurate
-    pass
-
 #-------------------------------------------------------------------------------
-#Live Scripts to actually do stuff:
+#Main Function:
+
+# Usage:
+# -s to load data and save songs
+# -c to load songs and save clusters
+# -l to load songs and learn weights
+# -i to load saved cluster data
 #-------------------------------------------------------------------------------
 CONST_FILLER_SONG = Song('filler')
 CONST_FILLER_SONG.year = float('inf')
 
 def main():
-    (options, args) = getopt.getopt(sys.argv[1:], 'sc')
+    (options, args) = getopt.getopt(sys.argv[1:], 'scli')
     if ('-s','') in options: #save the Songs Pickle
         readAndSavePickle('../data/MillionSongSubset/AdditionalFiles/subset_unique_tracks.txt') #(~1 min 50 seconds)
     elif ('-c', '') in options: #save the Clusters Pickle
         print "-----------------------Loading Song Data from Pickle------------------------"
         newDict = load("../songsDict")
         print "--------------------------Data Loading is Complete--------------------------"
-        for i in xrange(0,10):
-            centroids, assignments = readAndSaveClusters(newDict)
-    else:
+        centroids, assignments = readAndSaveClusters(newDict)
+    elif ('-l', '') in options:
         print "-----------------------Loading Song Data from Pickle------------------------"
         newDict = load("../songsDict")
         print "--------------------------Data Loading is Complete--------------------------"
+        print "------------------------Learning Parameter Weights--------------------------"
         learnDistanceWeights(newDict)
-    # else: #Load the Clusters Pickle
-        # centroids = load("../centroids")
-        # assignments = load("../assignments")
-    # for j in xrange(0,1):
-    #     print "---New K-means Trial---"
-    #     centroids, assignments = kMeansAllSongs(newDict, 5, 1000) #the centroids are not always the same for year
-    #     # #each centroid is a Song object. Each element in assignments is an array of Song objects
-    #     # #might need to change this so that trackid is readily accessible
-    #     #
-    #     for subArr in assignments:
-    #         print len(subArr)
-    #     i=0
-    #     print '[self.duration, self.year, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]'
-    #     for centroid in centroids: #To see what the centroids are
-    #         print "CENTROID #" + str(i)
-    #         centroid.concisePrint()
-    #         i += 1
+    elif ('-i', '') in options:
+        print "---------------------Loading Clusterings from Pickle------------------------"
+        centroids = load("../centroids")
+        assignments = load("../assignments")
+        print "----------------------Loaded Clusterings from Pickle------------------------"
+    else:
+        print "Usage: -s to read and save songs, -c to load songs and save clusters, -l to load songs and learn weights, -i to load saved cluster data"
+
 
 if __name__ == "__main__":
     main()
