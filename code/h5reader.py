@@ -409,7 +409,7 @@ def learnDistanceWeights(songsDict):
     # weights = [1,1,1,1,1,1,1]
     prev_distance = calculateClusteringDeviation(songsDict,weights)
     iterations = 20
-    step_size = .01
+    step_size = .05
     weight_change = [step_size*iterations for j in range(len(weights))]
     for i in range(iterations):
         for j in range(len(weights)):
