@@ -79,7 +79,7 @@ def distanceSongs(song1, song2, weights):
     # dataSetI = [song2.duration, song2.key, song2.generalLoudness, song2.mode, song2.tempo, song2.timeSigniature]
     # dataSetII = [song1.duration, song1.key, song1.generalLoudness, song1.mode, song1.tempo, song1.timeSigniature]
     # distance = 1 - spatial.distance.cosine(dataSetI, dataSetII)
-    # distance += weights[6]*term_distance(song1,song2)
+    distance += weights[6]*term_distance(song1,song2)
     return distance
 
 
@@ -159,11 +159,11 @@ def kMeansAllSongs(songsDict, weights, numCentroids = 5, T = 1000):
                 if thisSong.timeSigniatureConfidence != 0:
                     clusterTotalTimeSig += thisSong.timeSigniature
                     numFieldsGiven[4] += 1
-                # for term in thisSong.terms.keys():
-                #     song_val = thisSong.terms[term]
-                #     values = new_terms.get(term,(0,0))
-                #     new_terms[term] = (song_val[0]+values[0], song_val[0]+values[1])
-                # total_terms+=1
+                for term in thisSong.terms.keys():
+                    song_val = thisSong.terms[term]
+                    values = new_terms.get(term,(0,0))
+                    new_terms[term] = (song_val[0]+values[0], song_val[0]+values[1])
+                total_terms+=1
             # avgYear = clusterTotalYears / numFieldsGiven[0]
             avgDuration = clusterTotalDuration / numFieldsGiven[1]
             avgKey = clusterTotalKeys / totals[j]
@@ -384,14 +384,14 @@ def calculateClusteringDeviation(songsDict, weights):
     for j in xrange(0, len(assignments)):
         unevenness += ((10000/numClusters)-previous_assignmentLengths[j])**2
     print previous_assignmentLengths #comment out when ready
-    for i in xrange(0,5):
-        centroids, assignments = kMeansAllSongs(songsDict, weights, 5, 75)
-        assignmentLengths = sorted([len(cluster) for cluster in assignments])
-        print assignmentLengths #comment out when ready
-        for j in xrange(0,len(assignmentLengths)):
-            deviation += (assignmentLengths[j] - previous_assignmentLengths[j])**2
-            unevenness += ((10000/numClusters)-assignmentLengths[j])**2
-        previous_assignmentLengths = assignmentLengths
+    # for i in xrange(0,5):
+    #     centroids, assignments = kMeansAllSongs(songsDict, weights, 5, 75)
+    #     assignmentLengths = sorted([len(cluster) for cluster in assignments])
+    #     print assignmentLengths #comment out when ready
+    #     for j in xrange(0,len(assignmentLengths)):
+    #         deviation += (assignmentLengths[j] - previous_assignmentLengths[j])**2
+    #         unevenness += ((10000/numClusters)-assignmentLengths[j])**2
+    #     previous_assignmentLengths = assignmentLengths
     print deviation + unevenness #comment out when ready
     return deviation + unevenness
 
@@ -405,12 +405,16 @@ def calculateClusteringDeviation(songsDict, weights):
 #-------------------------------------------------------------------------------
 def learnDistanceWeights(songsDict):
     # weights = [0,0,0,0,0,0,0]
-    weights = [1,1,1,1,1,1]
-    # weights = [1,1,1,1,1,1,1]
+    # weights = [1,1,1,1,1,1]
+    weights = [-0.060030265506692514, -0.44383045710403024, 3.4490915718474104, 3.695904771678345, 4.6554185014126634, 5.0456856919515936, 3.139756095232522]
     prev_distance = calculateClusteringDeviation(songsDict,weights)
-    iterations = 20
+    print("previous best weights: "+str(weights))
+    print("distance: " + str(prev_distance))
+    iterations = 25
     step_size = .05
     weight_change = [step_size*iterations for j in range(len(weights))]
+    best_weights = []
+    best_distance = float('inf')
     for i in range(iterations):
         for j in range(len(weights)):
             weights[j]+=weight_change[j]
@@ -418,14 +422,19 @@ def learnDistanceWeights(songsDict):
             value = -1 if (weight_change[j]<0) else 1
             if(distance - prev_distance >0):
                 value = -1 * value
-            weight_change[j] = value*(step_size*iterations/(i+1))
+            weight_change[j] = value*(step_size*iterations/float(i+1.0))
             prev_distance = distance
+            if(distance<best_distance):
+                best_weights = weights
+                best_distance = distance
+            if(distance > 40000000 and best_distance < 40000000):
+                weights = best_weights
         print prev_distance
         print weights
         print("\n")
     print("It's the final weight\n")
-    print weights
-
+    print("time for the best weights\n")
+    print best_weights
 
     #gradient = loss using new param vs loss using prev param
 

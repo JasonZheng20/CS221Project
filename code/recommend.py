@@ -9,8 +9,9 @@ import sys
 import re
 from collections import deque
 import pickle
-
-
+#***************************************************************************************
+# TODO: year is no longer part of Song
+#***************************************************************************************
 class Recommend:
 	thetas = {
 		'year':1.8,
