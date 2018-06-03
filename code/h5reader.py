@@ -53,33 +53,33 @@ def constructCentroid(d, k, l, m, t, s,terms):
 #Takes two song objects and computes their distance
 #TODO: FOR NOW, JUST USING EUCLIDEAN DISTANCE WITH A TRAINED WEIGHT
 #-------------------------------------------------------------------------------
-def distanceSongs(song1, song2):
+def distanceSongs(song1, song2, weights):
     #TODO TRAIN COEFFICIENTS THAT GIVE US THE MOST CONSISTENT CLUSTERINGS ACROSS K-MEANS RUNS (AKA for each clustering, get closest clustering in other trial, and minimize distance)
     distance = 0
 
     # if song2.year != 0:
     #     distance += 1.8*abs(song1.year - song2.year)
 
-    distance += 1.3*abs(song1.duration - song2.duration)
+    distance += weights[0]*abs(song1.duration - song2.duration)
     # distance += 20*sigmoid(song1.duration - song2.duration)
     if song2.keyConfidence > 0:
-        distance += abs(song1.key - song2.key)
+        distance += weights[1]*abs(song1.key - song2.key)
         # distance += sigmoid(song1.key - song2.key)
-    distance += 3*abs(song1.generalLoudness - song2.generalLoudness)
+    distance += weights[2]*abs(song1.generalLoudness - song2.generalLoudness)
     # distance += 100*sigmoid(song1.generalLoudness - song2.generalLoudness)
     if song2.modeConfidence > 0:
         # distance += sigmoid(song1.mode - song2.mode)
-        distance += abs(song1.mode - song2.mode)
+        distance += weights[3]*abs(song1.mode - song2.mode)
     if song2.tempo != 0:
         # distance += sigmoid(song1.tempo - song2.tempo)
-        distance += 3*abs(song1.tempo - song2.tempo)
+        distance += weights[4]*abs(song1.tempo - song2.tempo)
     if song2.timeSigniatureConfidence > 0:
         # distance += sigmoid(song1.timeSigniature - song2.timeSigniature)
-        distance += abs(song1.timeSigniature - song2.timeSigniature)
+        distance += weights[5]*abs(song1.timeSigniature - song2.timeSigniature)
     # dataSetI = [song2.duration, song2.key, song2.generalLoudness, song2.mode, song2.tempo, song2.timeSigniature]
     # dataSetII = [song1.duration, song1.key, song1.generalLoudness, song1.mode, song1.tempo, song1.timeSigniature]
     # distance = 1 - spatial.distance.cosine(dataSetI, dataSetII)
-    # distance += term_distance(song1,song2)
+    # distance += weights[6]*term_distance(song1,song2)
     return distance
 
 
@@ -90,7 +90,7 @@ def term_distance(centroid, song):
     for term in song_term_keys:
         cent_val = centroid.terms.get(term, (0,0))
         song_val = song.terms[term]
-        distance += sqrt((cent_val[0]-song_val[0])**2 + (cent_val[1]-song_val[1])**2)
+        distance += math.sqrt((cent_val[0]-song_val[0])**2 + (cent_val[1]-song_val[1])**2)
         total += 1
     return distance/total
 
@@ -104,7 +104,7 @@ def term_distance(centroid, song):
 
 #TODO: update kMeans so that it works on an arbitrary number of fields, as described above
 #-------------------------------------------------------------------------------
-def kMeansAllSongs(songsDict, numCentroids = 5, T = 1000):
+def kMeansAllSongs(songsDict, weights, numCentroids = 5, T = 1000):
     centroids = randomCentroids(songsDict, numCentroids)
     for i in xrange(0, T):
         # print "Iteration: " + str(i)
@@ -114,7 +114,7 @@ def kMeansAllSongs(songsDict, numCentroids = 5, T = 1000):
             min_centroid = 0
             for k in xrange(0, len(centroids)):
                 if centroids[k] == CONST_FILLER_SONG: continue
-                distance = distanceSongs(centroids[k], songsDict[song])
+                distance = distanceSongs(centroids[k], songsDict[song], weights)
                 if distance < min_distance:
                     min_distance = distance
                     min_centroid = k
@@ -377,11 +377,11 @@ def readAndSaveClusters(songsDict):
 #-------------------------------------------------------------------------------
 def calculateClusteringDeviation(songsDict, weights):
     deviation = 0.
-    centroids, assignments = kMeansAllSongs(songsDict, 5, 75, weights) #TODO
+    centroids, assignments = kMeansAllSongs(songsDict, weights, 5, 75) #TODO
     previous_assignmentLengths = sorted([len(cluster) for cluster in assignments])
     print previous_assignmentLengths
-    for i in xrange(0,10):
-        centroids, assignments = kMeansAllSongs(songsDict, 5, 75, weights)
+    for i in xrange(0,5):
+        centroids, assignments = kMeansAllSongs(songsDict, weights, 5, 75)
         assignmentLengths = sorted([len(cluster) for cluster in assignments])
         print assignmentLengths
         for j in xrange(0,len(assignmentLengths)):
@@ -398,8 +398,10 @@ def calculateClusteringDeviation(songsDict, weights):
 #TODO: Implement this algorithm
 #-------------------------------------------------------------------------------
 def learnDistanceWeights(songsDict):
-    weights = [0,0,0,0,0]
-    calculateClusteringDeivation(songsDict, weights)
+    # weights = [0,0,0,0,0,0,0]
+    weights = [1,1,1,1,1,1]
+    # weights = [1,1,1,1,1,1,1]
+    calculateClusteringDeviation(songsDict, weights)
 
 
 
