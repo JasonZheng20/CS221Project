@@ -10,9 +10,9 @@ import getopt
 import re
 import pickle
 import random
-# import math
-# import numpy as np
-# from scipy import spatial
+import math
+import numpy as np
+from scipy import spatial
 
 #-------------------------------------------------------------------------------
 #randomCentroids(songsDict, numCentroids)
@@ -53,7 +53,7 @@ def constructCentroid(d, k, l, m, t, s,terms):
 # divided by the number of trials.
 #-------------------------------------------------------------------------------
 def clusteringLoss():
-    
+    pass
 
 #-------------------------------------------------------------------------------
 #distanceSongs(song1, song2)
@@ -92,10 +92,9 @@ def distanceSongs(song1, song2):
 
 
 def term_distance(centroid, song):
-    cent_term_keys = set(centroid.terms.keys())
     song_term_keys = set(song.terms.keys())
-    distance = 0.0
-    total = 0.0
+    distance = 0.1
+    total = 0.1
     for term in song_term_keys:
         cent_val = centroid.terms.get(term, (0,0))
         song_val = song.terms[term]
@@ -411,15 +410,15 @@ def main():
     (options, args) = getopt.getopt(sys.argv[1:], 'sc')
     if ('-s','') in options: #save the Songs Pickle
         readAndSavePickle('../data/MillionSongSubset/AdditionalFiles/subset_unique_tracks.txt') #(~1 min 50 seconds)
-    elif ('-c', '') in options: #save the Clusters Pickle
-        print "-----------------------Loading Song Data from Pickle------------------------"
-        newDict = load("../songsDict")
-        print "--------------------------Data Loading is Complete--------------------------"
-        for i in xrange(0,10):
-            centroids, assignments = readAndSaveClusters(newDict)
-    else: #Load the Clusters Pickle
-        centroids = load("../centroids")
-        assignments = load("../assignments")
+    # elif ('-c', '') in options: #save the Clusters Pickle
+    #     print "-----------------------Loading Song Data from Pickle------------------------"
+    #     newDict = load("../songsDict")
+    #     print "--------------------------Data Loading is Complete--------------------------"
+    #     for i in xrange(0,10):
+    #         centroids, assignments = readAndSaveClusters(newDict)
+    # else: #Load the Clusters Pickle
+    #     centroids = load("../centroids")
+    #     assignments = load("../assignments")
     # for j in xrange(0,1):
     #     print "---New K-means Trial---"
     #     centroids, assignments = kMeansAllSongs(newDict, 5, 1000) #the centroids are not always the same for year
