@@ -179,7 +179,7 @@ class Recommend:
 		song.timeSigniature = song.timeSigniature / float(max(1, factors['timeSigniature']))
 		for term in song.terms.keys():
 			values = song.terms[term]
-			song.terms[term] = (values[0]/float(factors['terms']),values[1]/(factors['terms']))
+			song.terms[term] = ((values[0]+.1)/float(factors['terms']+.1),(values[1]+.1)/float(factors['terms']+.1))
 		return song
 
 	#recommend a song

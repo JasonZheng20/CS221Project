@@ -35,7 +35,7 @@ def randomCentroids(songsDict, numCentroids):
 #in a cluster, and generates a new centroid Song containing that information
 #-------------------------------------------------------------------------------
 # def constructCentroid(y, d, k, l, m, t, s):
-def constructCentroid(d, k, l, m, t, s):
+def constructCentroid(d, k, l, m, t, s,terms):
     newCentroid = Song('centroid')
     # newCentroid.year = y
     newCentroid.duration = d
@@ -44,6 +44,7 @@ def constructCentroid(d, k, l, m, t, s):
     newCentroid.mode = m
     newCentroid.tempo = t
     newCentroid.timeSigniature = s
+    newCentroid.terms = terms
     return newCentroid
 
 #-------------------------------------------------------------------------------
@@ -89,7 +90,21 @@ def distanceSongs(song1, song2):
     # dataSetI = [song2.duration, song2.key, song2.generalLoudness, song2.mode, song2.tempo, song2.timeSigniature]
     # dataSetII = [song1.duration, song1.key, song1.generalLoudness, song1.mode, song1.tempo, song1.timeSigniature]
     # distance = 1 - spatial.distance.cosine(dataSetI, dataSetII)
+    distance += term_distance(song1,song2)
     return distance
+
+
+def term_distance(centroid, song):
+    cent_term_keys = set(centroid.terms.keys())
+    song_term_keys = set(song.terms.keys())
+    distance = 0.0
+    total = 0.0
+    for term in song_term_keys:
+        cent_val = centroid.terms.get(term, (0,0))
+        song_val = song.terms[term]
+        distance += sqrt((cent_val[0]-song_val[0])**2 + (cent_val[1]-song_val[1])**2)
+        total += 1
+    return distance/total
 
 #-------------------------------------------------------------------------------
 #kMeansAllSongs(songsDict, numCentroids)
@@ -134,6 +149,9 @@ def kMeansAllSongs(songsDict, numCentroids = 5, T = 1000):
             clusterTotalTempo = 0.
             clusterTotalTimeSig = 0.
             numFieldsGiven = [1,1,1,1,1]
+
+            total_terms = 0.1
+            new_terms = {}
             for k in xrange(0, totals[j]): #for each assignment in that cluster
                 thisSong = thisCluster[k]
                 # if thisSong.year != 0:
@@ -153,6 +171,11 @@ def kMeansAllSongs(songsDict, numCentroids = 5, T = 1000):
                 if thisSong.timeSigniatureConfidence != 0:
                     clusterTotalTimeSig += thisSong.timeSigniature
                     numFieldsGiven[4] += 1
+                for term in thisSong.terms.keys():
+                    song_val = thisSong.terms[term]
+                    values = new_terms.get(term,(0,0))
+                    new_terms[term] = (song_val[0]+values[0], song_val[0]+values[1])
+                total_terms+=1
             # avgYear = clusterTotalYears / numFieldsGiven[0]
             avgDuration = clusterTotalDuration / numFieldsGiven[1]
             avgKey = clusterTotalKeys / totals[j]
@@ -160,7 +183,15 @@ def kMeansAllSongs(songsDict, numCentroids = 5, T = 1000):
             avgMode = clusterTotalMode / numFieldsGiven[2]
             avgTempo = clusterTotalTempo / numFieldsGiven[3]
             avgTimeSig = clusterTotalTimeSig / numFieldsGiven[4]
-            new_centroids[j] = constructCentroid(avgDuration, avgKey, avgLoudness, avgMode, avgTempo, avgTimeSig)
+
+
+            
+            
+            for term in new_terms.keys():
+                values = new_terms[term]
+                new_terms[term] = ((values[0]+.1)/total_terms,(values[1]+.1)/total_terms)
+
+            new_centroids[j] = constructCentroid(avgDuration, avgKey, avgLoudness, avgMode, avgTempo, avgTimeSig, new_terms)
             # new_centroids[j] = constructCentroid(avgYear, avgDuration, avgKey, avgLoudness, avgMode, avgTempo, avgTimeSig)
         if new_centroids == centroids:
             print "CONVERGENCE AFTER " + str(i) + " TRIALS"
