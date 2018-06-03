@@ -2,6 +2,9 @@
 #h5reader.py
 
 #This file contains code to load and save Song objects from song datasets
+#IDEA: http://kldavenport.com/the-cost-function-of-k-means/
+#IDEA: WORD MAP
+# Using a different distance function other than (squared) Euclidean distance may stop the algorithm from converging.[citation needed] Various modifications of k-means such as spherical k-means and k-medoids have been proposed to allow using other distance measures.
 #-------------------------------------------------------------------------------
 import h5py
 import time
@@ -51,8 +54,8 @@ def constructCentroid(d, k, l, m, t, s):
 # is defined as the sum of all squared differences between #items in 5 clusters
 # divided by the number of trials.
 #-------------------------------------------------------------------------------
-def clusteringLoss():
-    
+# def clusteringLoss():
+
 
 #-------------------------------------------------------------------------------
 #distanceSongs(song1, song2)
@@ -101,7 +104,7 @@ def distanceSongs(song1, song2):
 def kMeansAllSongs(songsDict, numCentroids = 5, T = 1000):
     centroids = randomCentroids(songsDict, numCentroids)
     for i in xrange(0, T):
-        print "Iteration: " + str(i)
+        # print "Iteration: " + str(i)
         assignments = [[] for j in range(len(centroids))]
         for song in songsDict:
             min_distance = float('inf')
@@ -114,9 +117,9 @@ def kMeansAllSongs(songsDict, numCentroids = 5, T = 1000):
                     min_centroid = k
             assignments[min_centroid].append(songsDict[song]) #currently trackid
 
-        print "Assignment numbers"
-        for subArr in assignments:
-            print len(subArr)
+        # print "Assignment numbers"
+        # for subArr in assignments:
+        #     print len(subArr)
 
         new_centroids = [CONST_FILLER_SONG for j in range(len(centroids))]
         totals = [len(assignments[j]) for j in xrange(0, len(centroids))]
@@ -337,14 +340,6 @@ def readAndSavePickle(inputPath):
 def readAndSaveClusters(songsDict):
     print "----------------------------Running K-means------------------------------"
     centroids, assignments = kMeansAllSongs(songsDict, 5, 75)
-    for subArr in assignments:
-        print len(subArr)
-    # i=0
-    # print '[self.year, self.duration, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]'
-    # for centroid in centroids: #To see what the centroids are
-    #     print "CENTROID #" + str(i)
-    #     centroid.concisePrint()
-    #     i += 1
     print "---------------------------Completed K-means-----------------------------"
     # print "----------------------Saving Clusterings to Pickle-----------------------"
     # print "Saving clusters in a pickle file..."
@@ -361,7 +356,11 @@ def readAndSaveClusters(songsDict):
 #accurate clusterings possible.
 #TODO: Implement this algorithm
 #-------------------------------------------------------------------------------
-def learnDistanceWeights():
+def learnDistanceWeights(songsDict):
+    for i in xrange(0,5):
+        centroids, assignments = kMeansAllSongs(songsDict, 5, 75)
+        assignmentLengths = sorted([len(cluster) for cluster in assignments])
+        print assignmentLengths
     #for some number of trials
     #get number of things in each cluster
         #minimize variance across trials of number of things
@@ -386,9 +385,14 @@ def main():
         print "--------------------------Data Loading is Complete--------------------------"
         for i in xrange(0,10):
             centroids, assignments = readAndSaveClusters(newDict)
-    else: #Load the Clusters Pickle
-        centroids = load("../centroids")
-        assignments = load("../assignments")
+    else:
+        print "-----------------------Loading Song Data from Pickle------------------------"
+        newDict = load("../songsDict")
+        print "--------------------------Data Loading is Complete--------------------------"
+        learnDistanceWeights(newDict)
+    # else: #Load the Clusters Pickle
+        # centroids = load("../centroids")
+        # assignments = load("../assignments")
     # for j in xrange(0,1):
     #     print "---New K-means Trial---"
     #     centroids, assignments = kMeansAllSongs(newDict, 5, 1000) #the centroids are not always the same for year
