@@ -4,13 +4,15 @@
 #This file contains code to load and save Song objects from song datasets
 #-------------------------------------------------------------------------------
 import h5py
-import numpy as np
 import time
 import sys
 import getopt
 import re
 import pickle
 import random
+# import math
+# import numpy as np
+# from scipy import spatial
 
 #-------------------------------------------------------------------------------
 #randomCentroids(songsDict, numCentroids)
@@ -42,50 +44,48 @@ def constructCentroid(d, k, l, m, t, s):
     return newCentroid
 
 #-------------------------------------------------------------------------------
+#clusteringLoss()
+
+# We define clustering loss as x,
+# between each trial, we have a deviation x, which
+# is defined as the sum of all squared differences between #items in 5 clusters
+# divided by the number of trials.
+#-------------------------------------------------------------------------------
+def clusteringLoss():
+    
+
+#-------------------------------------------------------------------------------
 #distanceSongs(song1, song2)
 
 #Takes two song objects and computes their distance
-#Currently computes distance solely by year
-#TODO: Create an algorithm to be able to weight all of the terms properly to get accurate distances
-#TODO: We don't really have labeled data for song distance, so it will have to be unsupervised(?)
-#TODO: FIND A WAY TO NORMALIZE OTHER THAN SIGMOID WHICH ODESNT WORK, COSINE?
+#TODO: FOR NOW, JUST USING EUCLIDEAN DISTANCE WITH A TRAINED WEIGHT
 #-------------------------------------------------------------------------------
 def distanceSongs(song1, song2):
-    #TODO DO A CHECK TO SEE IF YEAR (AND OTHER DATA FIELDS ARE UNINIT (0))
-    #if a data field is not provided, don't add it to the distance, but we still need to normalize so a blank song isn't closer than a song thats missing some fields
-    #TODO: THIS ASSUMES NO WEIGHTING AND DOESNT CHECK FOR BLANK FIELD
-            # self.duration = 0 #assume always provided
-            # self.year = 0 #If it is not provided, it is 0
-            # self.key = 0 #Same deal as mode, see below, though key can take on more values
-            # self.keyConfidence = 0 #if 0.0 do not use self.key
-            # self.generalLoudness = 0 #assume it is always given
-            # self.mode = 0 #appears to always be 0 or 1, don't include if modeConfidence is 0.0
-            # self.modeConfidence = 0 #if modeConfidence is 0.0, assume don't use mode info, even if provided TODO: experiment with using despite 0.0
-            # self.tempo = 0 #if not provided, it will be 0
-            # self.timeSigniature = 0 #if not provided it will be 0
-            # self.timeSigniatureConfidence = 0 #if this is 0.0 do not use time sig
-        # distance = 2000*sigmoid(song1.year - song2.year)
-        # distance += 3*sigmoid(song1.duration - song2.duration)
-        # distance += 1.2*sigmoid(song1.key - song2.key)
-        # distance += 4*sigmoid(song1.generalLoudness - song2.generalLoudness)
-        # distance += 1.2*sigmoid(song1.mode - song2.mode)
-        # distance += 4*sigmoid(song1.tempo - song2.tempo)
-        # distance += sigmoid(song1.timeSigniature - song2.timeSigniature)
-        #TODO Using sigmoid fails to cluster them
     #TODO TRAIN COEFFICIENTS THAT GIVE US THE MOST CONSISTENT CLUSTERINGS ACROSS K-MEANS RUNS (AKA for each clustering, get closest clustering in other trial, and minimize distance)
     distance = 0
+
     # if song2.year != 0:
     #     distance += 1.8*abs(song1.year - song2.year)
+
     distance += 1.3*abs(song1.duration - song2.duration)
+    # distance += 20*sigmoid(song1.duration - song2.duration)
     if song2.keyConfidence > 0:
         distance += abs(song1.key - song2.key)
+        # distance += sigmoid(song1.key - song2.key)
     distance += 3*abs(song1.generalLoudness - song2.generalLoudness)
+    # distance += 100*sigmoid(song1.generalLoudness - song2.generalLoudness)
     if song2.modeConfidence > 0:
+        # distance += sigmoid(song1.mode - song2.mode)
         distance += abs(song1.mode - song2.mode)
     if song2.tempo != 0:
+        # distance += sigmoid(song1.tempo - song2.tempo)
         distance += 3*abs(song1.tempo - song2.tempo)
     if song2.timeSigniatureConfidence > 0:
+        # distance += sigmoid(song1.timeSigniature - song2.timeSigniature)
         distance += abs(song1.timeSigniature - song2.timeSigniature)
+    # dataSetI = [song2.duration, song2.key, song2.generalLoudness, song2.mode, song2.tempo, song2.timeSigniature]
+    # dataSetII = [song1.duration, song1.key, song1.generalLoudness, song1.mode, song1.tempo, song1.timeSigniature]
+    # distance = 1 - spatial.distance.cosine(dataSetI, dataSetII)
     return distance
 
 #-------------------------------------------------------------------------------
@@ -101,6 +101,7 @@ def distanceSongs(song1, song2):
 def kMeansAllSongs(songsDict, numCentroids = 5, T = 1000):
     centroids = randomCentroids(songsDict, numCentroids)
     for i in xrange(0, T):
+        print "Iteration: " + str(i)
         assignments = [[] for j in range(len(centroids))]
         for song in songsDict:
             min_distance = float('inf')
@@ -112,6 +113,11 @@ def kMeansAllSongs(songsDict, numCentroids = 5, T = 1000):
                     min_distance = distance
                     min_centroid = k
             assignments[min_centroid].append(songsDict[song]) #currently trackid
+
+        print "Assignment numbers"
+        for subArr in assignments:
+            print len(subArr)
+
         new_centroids = [CONST_FILLER_SONG for j in range(len(centroids))]
         totals = [len(assignments[j]) for j in xrange(0, len(centroids))]
         for j in xrange(0, len(centroids)): #look at a centroid (cluster)
@@ -330,7 +336,7 @@ def readAndSavePickle(inputPath):
 #-------------------------------------------------------------------------------
 def readAndSaveClusters(songsDict):
     print "----------------------------Running K-means------------------------------"
-    centroids, assignments = kMeansAllSongs(songsDict, 5, 1000)
+    centroids, assignments = kMeansAllSongs(songsDict, 5, 75)
     for subArr in assignments:
         print len(subArr)
     # i=0
