@@ -13,9 +13,9 @@ import getopt
 import re
 import pickle
 import random
-# import math
-# import numpy as np
-# from scipy import spatial
+import math
+import numpy as np
+from scipy import spatial
 
 #-------------------------------------------------------------------------------
 #randomCentroids(songsDict, numCentroids)
@@ -83,17 +83,16 @@ def distanceSongs(song1, song2):
     return distance
 
 
-# def term_distance(centroid, song):
-#     cent_term_keys = set(centroid.terms.keys())
-#     song_term_keys = set(song.terms.keys())
-#     distance = 0.0
-#     total = 0.0
-#     for term in song_term_keys:
-#         cent_val = centroid.terms.get(term, (0,0))
-#         song_val = song.terms[term]
-#         distance += sqrt((cent_val[0]-song_val[0])**2 + (cent_val[1]-song_val[1])**2)
-#         total += 1
-#     return distance/total
+def term_distance(centroid, song):
+    song_term_keys = set(song.terms.keys())
+    distance = 0.1
+    total = 0.1
+    for term in song_term_keys:
+        cent_val = centroid.terms.get(term, (0,0))
+        song_val = song.terms[term]
+        distance += sqrt((cent_val[0]-song_val[0])**2 + (cent_val[1]-song_val[1])**2)
+        total += 1
+    return distance/total
 
 #-------------------------------------------------------------------------------
 #kMeansAllSongs(songsDict, numCentroids)
