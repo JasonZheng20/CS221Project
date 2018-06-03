@@ -376,18 +376,24 @@ def readAndSaveClusters(songsDict):
 # divided by the number of trials.
 #-------------------------------------------------------------------------------
 def calculateClusteringDeviation(songsDict, weights):
+    numClusters = 5
     deviation = 0.
-    centroids, assignments = kMeansAllSongs(songsDict, weights, 5, 75) #TODO
+    unevenness = 0.
+    centroids, assignments = kMeansAllSongs(songsDict, weights, numClusters, 75)
     previous_assignmentLengths = sorted([len(cluster) for cluster in assignments])
-    print previous_assignmentLengths
+    for j in xrange(0, len(assignments)):
+        unevenness += ((10000/numClusters)-previous_assignmentLengths[j])**2
+    print previous_assignmentLengths #comment out when ready
     for i in xrange(0,5):
         centroids, assignments = kMeansAllSongs(songsDict, weights, 5, 75)
         assignmentLengths = sorted([len(cluster) for cluster in assignments])
-        print assignmentLengths
+        print assignmentLengths #comment out when ready
         for j in xrange(0,len(assignmentLengths)):
             deviation += (assignmentLengths[j] - previous_assignmentLengths[j])**2
+            unevenness += ((10000/numClusters)-assignmentLengths[j])**2
         previous_assignmentLengths = assignmentLengths
-    print deviation
+    print deviation + unevenness #comment out when ready
+    return deviation + unevenness
 
 #-------------------------------------------------------------------------------
 #learnDistanceWeights()
