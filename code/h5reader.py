@@ -62,7 +62,8 @@ def distanceSongs(song1, song2, weights):
         distance += weights[4]*abs(song1.tempo - song2.tempo)
     if song2.timeSigniatureConfidence > 0:
         distance += weights[5]*abs(song1.timeSigniature - song2.timeSigniature)
-    distance += weights[6]*term_distance(song1,song2)
+    distance += 11*weights[6]*term_distance(song1,song2)
+    distance += 17*weights[6]*term_distance(song1,song2)
     return distance
 
 
@@ -427,7 +428,7 @@ CONST_FILLER_SONG = Song('filler')
 CONST_FILLER_SONG.year = float('inf')
 
 def main():
-    (options, args) = getopt.getopt(sys.argv[1:], 'scli')
+    (options, args) = getopt.getopt(sys.argv[1:], 'sclit')
     if ('-s','') in options: #save the Songs Pickle
         readAndSavePickle('../data/MillionSongSubset/AdditionalFiles/subset_unique_tracks.txt') #(~1 min 50 seconds)
     elif ('-c', '') in options: #save the Clusters Pickle
@@ -446,6 +447,17 @@ def main():
         centroids = load("../centroids")
         assignments = load("../assignments")
         print "----------------------Loaded Clusterings from Pickle------------------------"
+    elif ('-t', '') in options:
+        print "-----------------------Loading Song Data from Pickle------------------------"
+        newDict = load("../songsDict")
+        print "--------------------------Data Loading is Complete--------------------------"
+        print "----------------------------Running K-means------------------------------"
+        numClusters = 5
+        weightsFromLearn = [-0.060030265506692514, -0.44383045710403024, 3.4490915718474104, 3.695904771678345, 4.6554185014126634, 5.0456856919515936, 3.139756095232522]
+        centroids, assignments = kMeansAllSongs(newDict, weightsFromLearn, numClusters, 75)
+        loss = succinctLoss(assignments, numClusters)
+        print "Clustered with Loss: " + str(loss)
+        print "---------------------------Completed K-means-----------------------------"
     else:
         print "Usage: -s to read and save songs, -c to load songs and save clusters, -l to load songs and learn weights, -i to load saved cluster data"
 
