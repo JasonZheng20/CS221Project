@@ -87,6 +87,64 @@ def term_distance(centroid, song):
     return distance/total
 
 #-------------------------------------------------------------------------------
+#HClusterAllSongs(newDict, numCentroids = 5):
+
+#Performs H-clustering on a dataset
+#-------------------------------------------------------------------------------
+def HClusterAllSongs(newDict, numClusters = 5):
+    Hclustering = AgglomerativeClustering(n_clusters=numClusters, affinity='euclidean', linkage='ward')
+    kmeansdata = []
+    for song in newDict:
+        kmeansdata.append(translateSongToDataArray(newDict[song]))
+    sa = scipy.array(kmeansdata)
+    print "done loading"
+    Hclustering.fit(sa)
+    assigns = Hclustering.labels_ #these are the labels for song idx 0->9999 of which cluster song_i belongs in
+    assignments = [[] for i in xrange(0,numClusters)]
+    i=0
+    for song in newDict:
+        assignments[assigns[i]].append(newDict[song])
+        i+= 1
+    centroid_list = []
+    for clustering in assignments:
+        centroidDefault = [0.,0.,0.,0.,0.,0.]
+        numFieldsGiven = [0.,0.,0.,0.,0.]
+        total_terms = 0.1
+        new_terms = {}
+        for song in clustering:
+            numFieldsGiven[4] += 1
+            centroidDefault[0] += song.duration
+            if song.keyConfidence > 0:
+                centroidDefault[1] += song.key
+                numFieldsGiven[0] += 1
+            centroidDefault[2] += song.generalLoudness
+            if song.modeConfidence > 0:
+                centroidDefault[3] += song.mode
+                numFieldsGiven[1] += 1
+            if song.tempo != 0:
+                centroidDefault[4] += song.tempo
+                numFieldsGiven[2] += 1
+            if song.timeSigniatureConfidence != 0:
+                centroidDefault[5] += song.timeSigniature
+                numFieldsGiven[3] += 1
+            for term in song.terms.keys():
+                song_val = song.terms[term]
+                values = new_terms.get(term,(0,0))
+                new_terms[term] = (song_val[0]+values[0], song_val[0]+values[1])
+            total_terms+=1
+        avgDuration = centroidDefault[0] / numFieldsGiven[4]
+        avgKey = centroidDefault[1] / numFieldsGiven[0]
+        avgLoudness = centroidDefault[2] / numFieldsGiven[4]
+        avgMode = centroidDefault[3] / numFieldsGiven[1]
+        avgTempo = centroidDefault[4] / numFieldsGiven[2]
+        avgTimeSig = centroidDefault[5] / numFieldsGiven[3]
+        for term in new_terms.keys():
+            values = new_terms[term]
+            new_terms[term] = ((values[0]+.1)/total_terms,(values[1]+.1)/total_terms)
+    centroids = [constructCentroid(avgDuration, avgKey, avgLoudness, avgMode, avgTempo, avgTimeSig, new_terms) for i in xrange(0,len(centroid_list))] #TODO FILL THIS OUT
+    return centroids, assignments
+
+#-------------------------------------------------------------------------------
 #kMeansAllSongs(songsDict, numCentroids)
 
 #Takes a dictionary of trackid:Song object, and creates a clustering of similar
@@ -523,7 +581,7 @@ CONST_FILLER_SONG = Song('filler')
 CONST_FILLER_SONG.year = float('inf')
 
 def main():
-    (options, args) = getopt.getopt(sys.argv[1:], 'sclitypw')
+    (options, args) = getopt.getopt(sys.argv[1:], 'sclitypwx')
     if ('-s','') in options: #save the Songs Pickle
         readAndSavePickle('../data/MillionSongSubset/AdditionalFiles/subset_unique_tracks.txt') #(~1 min 50 seconds)
     elif ('-c', '') in options: #save the Clusters Pickle
@@ -564,6 +622,16 @@ def main():
         loss = succinctLoss(assignments, numClusters)
         print "Clustered with Loss: " + str(loss)
         print "---------------------------Completed K-means-----------------------------"
+    elif ('-x', '') in options:
+        print "-----------------------Loading Song Data from Pickle------------------------"
+        newDict = load("../songsDict")
+        print "--------------------------Data Loading is Complete--------------------------"
+        print "----------------------------Running H-clustering------------------------------"
+        numClusters = 20
+        centroids, assignments = HClusterAllSongs(newDict, numClusters)
+        loss = succinctLoss(assignments, numClusters)
+        print "Clustered with Loss: " + str(loss)
+        print "---------------------------Completed H-clustering-----------------------------"
     elif ('-p', '') in options: #TODO=-==============GENERALIZE TO NUMCLUSTERS========
         #H-clustering algorithm
         numClusters = 4
@@ -621,8 +689,13 @@ def main():
         plotHistogram(newDict)
     else:
         print "Usage: -s to read and save songs, -c to load songs and save clusters, -l to load songs and learn weights, -i to load saved cluster data"
+        print "-----------------------Loading Song Data from Pickle------------------------"
+        newDict = load("../songsDict")
+        print "--------------------------Data Loading is Complete--------------------------"
+        for song in newDict:
+            newDict[song].printSong()
+            break
 
 
 if __name__ == "__main__":
     main()
-
