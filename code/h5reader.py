@@ -15,8 +15,16 @@ import pickle
 import random
 import math
 import numpy as np
-import pandas
+import pandas as pd
 import scipy
+import scipy.cluster
+import numpy
+import colorsys
+import random
+import os
+from matplotlib.mlab import PCA as mlabPCA
+from matplotlib import pyplot as plt
+from sklearn.cluster import AgglomerativeClustering
 
 #-------------------------------------------------------------------------------
 #randomCentroids(songsDict, numCentroids)
@@ -43,7 +51,7 @@ def constructCentroid(d, k, l, m, t, s,terms):
     newCentroid.mode = m
     newCentroid.tempo = t
     newCentroid.timeSigniature = s
-    # newCentroid.terms = terms
+    newCentroid.terms = terms
     return newCentroid
 
 #-------------------------------------------------------------------------------
@@ -63,7 +71,7 @@ def distanceSongs(song1, song2, weights):
         distance += weights[4]*abs(song1.tempo - song2.tempo)
     if song2.timeSigniatureConfidence > 0:
         distance += weights[5]*abs(song1.timeSigniature - song2.timeSigniature)
-    # distance += 11*weights[6]*term_distance(song1,song2)
+    distance += 11*weights[6]*term_distance(song1,song2)
     return distance
 
 def term_distance(centroid, song):
@@ -130,20 +138,20 @@ def kMeansAllSongs(songsDict, weights, numCentroids = 5, T = 1000):
                 if thisSong.timeSigniatureConfidence != 0:
                     clusterTotalTimeSig += thisSong.timeSigniature
                     numFieldsGiven[4] += 1
-                # for term in thisSong.terms.keys():
-                #     song_val = thisSong.terms[term]
-                #     values = new_terms.get(term,(0,0))
-                #     new_terms[term] = (song_val[0]+values[0], song_val[0]+values[1])
-                # total_terms+=1
-            avgDuration = clusterTotalDuration / numFieldsGiven[1]
-            avgKey = clusterTotalKeys / totals[j]
+                for term in thisSong.terms.keys():
+                    song_val = thisSong.terms[term]
+                    values = new_terms.get(term,(0,0))
+                    new_terms[term] = (song_val[0]+values[0], song_val[0]+values[1])
+                total_terms+=1
+            avgDuration = clusterTotalDuration / totals[j]
+            avgKey = clusterTotalKeys / numFieldsGiven[1]
             avgLoudness = clusterTotalLoudness / totals[j]
             avgMode = clusterTotalMode / numFieldsGiven[2]
             avgTempo = clusterTotalTempo / numFieldsGiven[3]
             avgTimeSig = clusterTotalTimeSig / numFieldsGiven[4]
-            # for term in new_terms.keys():
-            #     values = new_terms[term]
-            #     new_terms[term] = ((values[0]+.1)/total_terms,(values[1]+.1)/total_terms)
+            for term in new_terms.keys():
+                values = new_terms[term]
+                new_terms[term] = ((values[0]+.1)/total_terms,(values[1]+.1)/total_terms)
             new_centroids[j] = constructCentroid(avgDuration, avgKey, avgLoudness, avgMode, avgTempo, avgTimeSig, new_terms)
         if new_centroids == centroids:
             print "CONVERGENCE AFTER " + str(i) + " TRIALS"
@@ -214,7 +222,6 @@ class Song:
         print "ARTISTNAME: "  + str(self.artistName)
         print "SIMILAR_ARTISTS: "  + str(self.similarArtists)
         print "DURATION: "  + str(self.duration)
-        # print "YEAR: "  + str(self.year)
         print "KEY: " + str(self.key)
         print "LOUDNESS: " + str(self.generalLoudness)
         print "MODE: " + str(self.mode)
@@ -224,7 +231,6 @@ class Song:
         print "-----------------------------------------"
 
     def concisePrint(self):
-        # print [self.year, self.duration, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]
         print [self.duration, self.key, self.generalLoudness, self.mode, self.tempo, self.timeSigniature]
 
     def populateFields(self):
@@ -349,8 +355,7 @@ def readAndSaveClusters(songsDict, numClusters = 5):
 # is defined as the sum of all squared differences between #items in 5 clusters
 # divided by the number of trials.
 #-------------------------------------------------------------------------------
-def calculateClusteringDeviation(songsDict, weights):
-    numClusters = 5
+def calculateClusteringDeviation(songsDict, weights, numClusters):
     unevenness = 0.
     centroids, assignments = kMeansAllSongs(songsDict, weights, numClusters, 75)
     previous_assignmentLengths = sorted([len(cluster) for cluster in assignments])
@@ -358,17 +363,6 @@ def calculateClusteringDeviation(songsDict, weights):
         unevenness += ((10000/numClusters)-previous_assignmentLengths[j])**2
     return unevenness
 
-#DEPRECATED: Calculate consistency:
-    # print previous_assignmentLengths #comment out when ready
-    # for i in xrange(0,5):
-    #     centroids, assignments = kMeansAllSongs(songsDict, weights, 5, 75)
-    #     assignmentLengths = sorted([len(cluster) for cluster in assignments])
-    #     print assignmentLengths #comment out when ready
-    #     for j in xrange(0,len(assignmentLengths)):
-    #         deviation += (assignmentLengths[j] - previous_assignmentLengths[j])**2
-    #         unevenness += ((10000/numClusters)-assignmentLengths[j])**2
-    #     previous_assignmentLengths = assignmentLengths
-    # print unevenness #comment out when ready
 #-------------------------------------------------------------------------------
 #learnDistanceWeights()
 
@@ -376,9 +370,9 @@ def calculateClusteringDeviation(songsDict, weights):
 #of clustering across K-means computations. This is to ensure that we have most
 #accurate clusterings possible.
 #-------------------------------------------------------------------------------
-def learnDistanceWeights(songsDict):
+def learnDistanceWeights(songsDict, numClusters):
     weights = [-0.060030265506692514, -0.44383045710403024, 3.4490915718474104, 3.695904771678345, 4.6554185014126634, 5.0456856919515936, 3.139756095232522]
-    prev_distance = calculateClusteringDeviation(songsDict,weights)
+    prev_distance = calculateClusteringDeviation(songsDict,weights, numClusters)
     print("previous best weights: "+str(weights))
     print("distance: " + str(prev_distance))
     iterations = 25
@@ -389,7 +383,7 @@ def learnDistanceWeights(songsDict):
     for i in range(iterations):
         for j in range(len(weights)):
             weights[j]+=weight_change[j]
-            distance = calculateClusteringDeviation(songsDict,weights)
+            distance = calculateClusteringDeviation(songsDict,weights, numClusters)
             value = -1 if (weight_change[j]<0) else 1
             if(distance - prev_distance >0):
                 value = -1 * value
@@ -427,7 +421,7 @@ def translateSongToDataArray(Song):
 
 #Attempt to visualize our K-means clusters
 #-------------------------------------------------------------------------------
-def clusterVisualization(centroids, assignments, songsDict):
+def clusterVisualization(centroids, assignments, songsDict, numClusters = 5):
     kmeansdata = []
     for song in songsDict:
         kmeansdata.append(translateSongToDataArray(songsDict[song]))
@@ -439,95 +433,41 @@ def clusterVisualization(centroids, assignments, songsDict):
         for i in xrange(0,len(assignments)):
             if songsDict[song] in assignments[i]:
                 label_list.append(i) #index of that centroid list
-    # print centroid_list
-    # print label_list
-    # print kmeansdata
     sa = scipy.array(kmeansdata)
     cl = scipy.array(centroid_list)
     ll = scipy.array(label_list)
-    plot_cluster(sa, cl, ll, 5)
-
-import numpy
-import colorsys
-import random
-import os
-from matplotlib.mlab import PCA as mlabPCA
-from matplotlib import pyplot as plt
-
-
-def get_colors(num_colors):
-    colors = []
-    random_colors = []
-    # Generate 256 different colors and choose num_clors randomly
-    for i in numpy.arange(0., 360., 360. / 256.):
-        hue = i / 360.
-        lightness = (50 + numpy.random.rand() * 10) / 100.
-        saturation = (90 + numpy.random.rand() * 10) / 100.
-        colors.append(colorsys.hls_to_rgb(hue, lightness, saturation))
-
-    for i in range(0, num_colors):
-        random_colors.append(colors[random.randint(0, len(colors) - 1)])
-    return random_colors
-
+    plot_cluster(sa, cl, ll, numClusters)
 
 def random_centroid_selector(total_clusters , clusters_plotted):
-    """
-    Function to generate a list of randomly selected
-    centroids to plot on the output png
-    total_clusters        -> Total number of clusters
-    clusters_plotted      -> Number of clusters to plot
-    random_list           -> Contains the index of clusters
-                             to be plotted
-    """
     random_list = []
     for i in range(0 , clusters_plotted):
         random_list.append(random.randint(0, total_clusters - 1))
     return random_list
 
 def plot_cluster(kmeansdata, centroid_list, label_list , num_cluster):
-    """
-    Function to convert the n-dimensional cluster to
-    2-dimensional cluster and plotting 50 random clusters
-    file%d.png    -> file where the output is stored indexed
-                     by first available file index
-                     e.g. file1.png , file2.png ...
-    """
     mlab_pca = mlabPCA(kmeansdata)
     cutoff = mlab_pca.fracs[1]
     users_2d = mlab_pca.project(kmeansdata, minfrac=cutoff)
     centroids_2d = mlab_pca.project(centroid_list, minfrac=cutoff)
-
-
-    colors = get_colors(num_cluster)
+    # colors = [(0,0,0), (0.33,1,0), (1,0,0), (1,1,0), (0,0.33,1)] #TODO CHANGE TO GENERALIZE FOR MORE CLUSTERS
+    colors = [(0,0,0), (1,0,0), (0,1,0), (0,0,1), (1,1,0), (1,0,1), (0,0,1), (0.33,0,0), (0,0.33,0), (0,0,0.33), (0.33, 1, 0), (0.33,0,1), (0.33,1,1), (1,0.33,0), (1,0.33,1), (0,0.33,1), (0.33,0.33,0.33), (0.33,0.33,0), (0,0.33,0.33), (0.33,0,0.33)]
     plt.figure()
     plt.xlim([users_2d[:, 0].min() - 3, users_2d[:, 0].max() + 3])
     plt.ylim([users_2d[:, 1].min() - 3, users_2d[:, 1].max() + 3])
-
-    # Plotting 50 clusters only for now
     random_list = random_centroid_selector(num_cluster , 50)
-
-    # Plotting only the centroids which were randomly_selected
-    # Centroids are represented as a large 'o' marker
     for i, position in enumerate(centroids_2d):
         if i in random_list:
             plt.scatter(centroids_2d[i, 0], centroids_2d[i, 1], marker='o', c=colors[i], s=100)
-
-
-    # Plotting only the points whose centers were plotted
-    # Points are represented as a small '+' marker
     for i, position in enumerate(label_list):
         if position in random_list:
             plt.scatter(users_2d[i, 0], users_2d[i, 1] , marker='+' , c=colors[position])
-
-    filename = "K-means_Disregard_TimeSig_2D_Clusters"
+    filename = "H-Clustering_2D_20"
     i = 0
     while True:
         if os.path.isfile(filename + str(i) + ".png") == False:
-            #new index found write file and return
             plt.savefig(filename + str(i) + ".png")
             break
         else:
-            #Changing index to next number
             i = i + 1
     return
 #-------------------------------------------------------------------------------
@@ -543,20 +483,22 @@ CONST_FILLER_SONG = Song('filler')
 CONST_FILLER_SONG.year = float('inf')
 
 def main():
-    (options, args) = getopt.getopt(sys.argv[1:], 'sclit')
+    (options, args) = getopt.getopt(sys.argv[1:], 'sclityp')
     if ('-s','') in options: #save the Songs Pickle
         readAndSavePickle('../data/MillionSongSubset/AdditionalFiles/subset_unique_tracks.txt') #(~1 min 50 seconds)
     elif ('-c', '') in options: #save the Clusters Pickle
+        numClusters = 20
         print "-----------------------Loading Song Data from Pickle------------------------"
         newDict = load("../songsDict")
         print "--------------------------Data Loading is Complete--------------------------"
-        centroids, assignments = readAndSaveClusters(newDict)
+        centroids, assignments = readAndSaveClusters(newDict, numClusters)
     elif ('-l', '') in options:
         print "-----------------------Loading Song Data from Pickle------------------------"
         newDict = load("../songsDict")
         print "--------------------------Data Loading is Complete--------------------------"
         print "------------------------Learning Parameter Weights--------------------------"
-        learnDistanceWeights(newDict)
+        numClusters = 20
+        learnDistanceWeights(newDict, numClusters)
     elif ('-i', '') in options:
         print "-----------------------Loading Song Data from Pickle------------------------"
         newDict = load("../songsDict")
@@ -564,19 +506,71 @@ def main():
         print "---------------------Loading Clusterings from Pickle------------------------"
         centroids = load("../centroids")
         assignments = load("../assignments")
+        print "Assignemnts in each: "
+        assignLengths = [len(assign) for assign in assignments]
+        print assignLengths
         print "----------------------Loaded Clusterings from Pickle------------------------"
-        clusterVisualization(centroids, assignments, newDict)
+        clusterVisualization(centroids, assignments, newDict, 20)
     elif ('-t', '') in options:
         print "-----------------------Loading Song Data from Pickle------------------------"
         newDict = load("../songsDict")
         print "--------------------------Data Loading is Complete--------------------------"
         print "----------------------------Running K-means------------------------------"
-        numClusters = 5
+        numClusters = 20
         weightsFromLearn = [-0.060030265506692514, -0.44383045710403024, 3.4490915718474104, 3.695904771678345, 4.6554185014126634, 5.0456856919515936, 3.139756095232522]
         centroids, assignments = kMeansAllSongs(newDict, weightsFromLearn, numClusters, 75)
         loss = succinctLoss(assignments, numClusters)
         print "Clustered with Loss: " + str(loss)
         print "---------------------------Completed K-means-----------------------------"
+    elif ('-p', '') in options: #TODO=-==============GENERALIZE TO NUMCLUSTERS========
+        #H-clustering algorithm
+        numClusters = 20
+        Hclustering = AgglomerativeClustering(n_clusters=numClusters, affinity='euclidean', linkage='ward')
+        newDict = load("../songsDict")
+        kmeansdata = []
+        for song in newDict:
+            kmeansdata.append(translateSongToDataArray(newDict[song]))
+        sa = scipy.array(kmeansdata)
+        print "done loading"
+        Hclustering.fit(sa)
+        assigns = Hclustering.labels_ #these are the labels for song idx 0->9999 of which cluster song_i belongs in
+        assignments = [[] for i in xrange(0,numClusters)]
+        i=0
+        for song in newDict:
+            assignments[assigns[i]].append(newDict[song])
+            i+= 1
+        centroid_list = []
+        for clustering in assignments:
+            centroidDefault = [0.,0.,0.,0.,0.,0.]
+            numFieldsGiven = [0.,0.,0.,0.,0.]
+            for song in clustering:
+                numFieldsGiven[4] += 1
+                centroidDefault[0] += song.duration
+                if song.keyConfidence > 0:
+                    centroidDefault[1] += song.key
+                    numFieldsGiven[0] += 1
+                centroidDefault[2] += song.generalLoudness
+                if song.modeConfidence > 0:
+                    centroidDefault[3] += song.mode
+                    numFieldsGiven[1] += 1
+                if song.tempo != 0:
+                    centroidDefault[4] += song.tempo
+                    numFieldsGiven[2] += 1
+                if song.timeSigniatureConfidence != 0:
+                    centroidDefault[5] += song.timeSigniature
+                    numFieldsGiven[3] += 1
+            avgDuration = centroidDefault[0] / numFieldsGiven[4]
+            avgKey = centroidDefault[1] / numFieldsGiven[0]
+            avgLoudness = centroidDefault[2] / numFieldsGiven[4]
+            avgMode = centroidDefault[3] / numFieldsGiven[1]
+            avgTempo = centroidDefault[4] / numFieldsGiven[2]
+            avgTimeSig = centroidDefault[5] / numFieldsGiven[3]
+            centroid = [avgDuration, avgKey, avgLoudness, avgMode, avgTempo, avgTimeSig]
+            # centroid = [avgLoudness, avgTempo, avgTimeSig]
+            centroid_list.append(centroid)
+        cl = scipy.array(centroid_list)
+        ll = scipy.array(assigns)
+        plot_cluster(sa, cl, ll, numClusters)
     else:
         print "Usage: -s to read and save songs, -c to load songs and save clusters, -l to load songs and learn weights, -i to load saved cluster data"
 
