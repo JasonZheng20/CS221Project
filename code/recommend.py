@@ -77,8 +77,23 @@ class Recommend:
 
 	# Call to cluster will update the two clusters formed from the different playlists
 	def cluster(self):
-		self.cluster_playlist(1)
-		self.cluster_playlist(2)
+		combined1 = dict(self.combined_playlist)
+		combined2 = dict(self.combined_playlist)
+		for key in self.playList1:
+			combined1[key] = combined1.get(key, 0) + 1
+		for key in self.playList2:
+			combined2[key] = combined2.get(key, 0) + 1
+		good_1 = {}
+		good_2 = {}
+		for key in combined1:
+			good_1[key] = self.all_songs[key]
+		for key in combined2:
+			good_2[key] = self.all_songs[key]
+		assign_default = []
+		self.centroids1, assign_default = h5reader.HClusterAllSongs(good_1)
+		self.centroids2, assign_default = h5reader.HClusterAllSongs(good_2)
+		# self.cluster_playlist(1)
+		# self.cluster_playlist(2)
 
 	#Clusters the given playlist with the combined playlist as well
 	#doesn't really work at the moment, need to account for number of times played
@@ -194,7 +209,7 @@ class Recommend:
 		choice = random.random()
 		index = 0
 		running_total = 0.0
-		while index < len(centroids):
+		while index < len(centroids)-1:
 			running_total += centroid_prob[index]
 			if(choice < running_total):
 				break
