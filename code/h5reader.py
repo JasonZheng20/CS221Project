@@ -87,6 +87,20 @@ def term_distance(centroid, song):
     return distance/total
 
 #-------------------------------------------------------------------------------
+#randomClusters(newDict, numCentroids = 5):
+
+#Clusters randomly, expected to perform poorly
+#-------------------------------------------------------------------------------
+def randomClusters(newDict, numCentroids = 5):
+    centroids = randomCentroids(newDict, numCentroids)
+    assignments = [[] for i in xrange(0,numCentroids)]
+    for song in newDict:
+        actualSong = newDict[song]
+        idx = random.randint(0,numCentroids-1)
+        assignments[idx].append(actualSong)
+    return centroids, assignments
+
+#-------------------------------------------------------------------------------
 #HClusterAllSongs(newDict, numCentroids = 5):
 
 #Performs H-clustering on a dataset
@@ -422,6 +436,29 @@ def calculateClusteringDeviation(songsDict, weights, numClusters):
         unevenness += ((10000/numClusters)-previous_assignmentLengths[j])**2
     return unevenness
 
+# def calculateClusteringConsistency(songsDict, weights, numClusters):
+#     numClusters = 5
+#     deviation = 0.
+#     centroids, assignments = kMeansAllSongs(songsDict, weights, 5, 75) #TODO
+#     unevenness = 0.
+#     centroids, assignments = kMeansAllSongs(songsDict, weights, numClusters, 75)
+#     previous_assignmentLengths = sorted([len(cluster) for cluster in assignments])
+#     print previous_assignmentLengths
+#     for j in xrange(0, len(assignments)):
+#         unevenness += ((10000/numClusters)-previous_assignmentLengths[j])**2
+#     print previous_assignmentLengths #comment out when ready
+#     for i in xrange(0,5):
+#         centroids, assignments = kMeansAllSongs(songsDict, weights, 5, 75)
+#         assignmentLengths = sorted([len(cluster) for cluster in assignments])
+#         print assignmentLengths
+#         print assignmentLengths #comment out when ready
+#         for j in xrange(0,len(assignmentLengths)):
+#             deviation += (assignmentLengths[j] - previous_assignmentLengths[j])**2
+#             unevenness += ((10000/numClusters)-assignmentLengths[j])**2
+#         previous_assignmentLengths = assignmentLengths
+#     print deviation
+#     print deviation + unevenness #comment out when ready
+#     return deviation + unevenness
 #-------------------------------------------------------------------------------
 #learnDistanceWeights()
 
@@ -581,7 +618,7 @@ CONST_FILLER_SONG = Song('filler')
 CONST_FILLER_SONG.year = float('inf')
 
 def main():
-    (options, args) = getopt.getopt(sys.argv[1:], 'sclitypwx')
+    (options, args) = getopt.getopt(sys.argv[1:], 'sclitypwxz')
     if ('-s','') in options: #save the Songs Pickle
         readAndSavePickle('../data/MillionSongSubset/AdditionalFiles/subset_unique_tracks.txt') #(~1 min 50 seconds)
     elif ('-c', '') in options: #save the Clusters Pickle
@@ -629,6 +666,16 @@ def main():
         print "----------------------------Running H-clustering------------------------------"
         numClusters = 20
         centroids, assignments = HClusterAllSongs(newDict, numClusters)
+        loss = succinctLoss(assignments, numClusters)
+        print "Clustered with Loss: " + str(loss)
+        print "---------------------------Completed H-clustering-----------------------------"
+    elif ('-z', '') in options:
+        print "-----------------------Loading Song Data from Pickle------------------------"
+        newDict = load("../songsDict")
+        print "--------------------------Data Loading is Complete--------------------------"
+        print "----------------------------Running H-clustering------------------------------"
+        numClusters = 4
+        centroids, assignments = randomClusters(newDict, numClusters)
         loss = succinctLoss(assignments, numClusters)
         print "Clustered with Loss: " + str(loss)
         print "---------------------------Completed H-clustering-----------------------------"
