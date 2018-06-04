@@ -436,29 +436,50 @@ def calculateClusteringDeviation(songsDict, weights, numClusters):
         unevenness += ((10000/numClusters)-previous_assignmentLengths[j])**2
     return unevenness
 
-# def calculateClusteringConsistency(songsDict, weights, numClusters):
-#     numClusters = 5
-#     deviation = 0.
-#     centroids, assignments = kMeansAllSongs(songsDict, weights, 5, 75) #TODO
-#     unevenness = 0.
-#     centroids, assignments = kMeansAllSongs(songsDict, weights, numClusters, 75)
-#     previous_assignmentLengths = sorted([len(cluster) for cluster in assignments])
-#     print previous_assignmentLengths
-#     for j in xrange(0, len(assignments)):
-#         unevenness += ((10000/numClusters)-previous_assignmentLengths[j])**2
-#     print previous_assignmentLengths #comment out when ready
-#     for i in xrange(0,5):
-#         centroids, assignments = kMeansAllSongs(songsDict, weights, 5, 75)
-#         assignmentLengths = sorted([len(cluster) for cluster in assignments])
-#         print assignmentLengths
-#         print assignmentLengths #comment out when ready
-#         for j in xrange(0,len(assignmentLengths)):
-#             deviation += (assignmentLengths[j] - previous_assignmentLengths[j])**2
-#             unevenness += ((10000/numClusters)-assignmentLengths[j])**2
-#         previous_assignmentLengths = assignmentLengths
-#     print deviation
-#     print deviation + unevenness #comment out when ready
-#     return deviation + unevenness
+def calculateClusteringConsistency(songsDict, weights, numClusters):
+    deviation = 0.
+    centroids, assignments = kMeansAllSongs(songsDict, weights, numClusters, 75)
+    previous_assignmentLengths = sorted([len(cluster) for cluster in assignments])
+    for i in xrange(0,5):
+        print "trial done"
+        centroids, assignments = kMeansAllSongs(songsDict, weights, numClusters, 75)
+        assignmentLengths = sorted([len(cluster) for cluster in assignments])
+        for j in xrange(0,len(assignmentLengths)):
+            deviation += (assignmentLengths[j] - previous_assignmentLengths[j])**2
+        previous_assignmentLengths = assignmentLengths
+    print deviation
+    return deviation
+
+def calculateClusteringConsistencyH(newDict, numClusters):
+    deviation = 0.
+    centroids, assignments = HClusterAllSongs(newDict, numClusters)
+    previous_assignmentLengths = sorted([len(cluster) for cluster in assignments])
+    for i in xrange(0,5):
+        print "trial done"
+        centroids, assignments = HClusterAllSongs(newDict, numClusters)
+        assignmentLengths = sorted([len(cluster) for cluster in assignments])
+        for j in xrange(0,len(assignmentLengths)):
+            deviation += (assignmentLengths[j] - previous_assignmentLengths[j])**2
+        previous_assignmentLengths = assignmentLengths
+    print deviation
+    return deviation
+
+def calculateClusteringConsistencyRandom(songsDict, numClusters):
+    deviation = 0.
+    centroidsPrev, assignmentsPrev = randomClusters(songsDict, numClusters)
+    for i in xrange(0,5):
+        print "trial done"
+        centroids, assignments = randomClusters(songsDict, numClusters)
+        for j in xrange(0,numClusters):
+            clusterDev = 0.
+            for song in assignments[j]:
+                if song not in assignmentsPrev[j]:
+                    clusterDev += 1.
+            deviation += clusterDev**2
+        centroidsPrev = centroids
+        assignmentsPrev = assignments
+    print deviation
+    return deviation
 #-------------------------------------------------------------------------------
 #learnDistanceWeights()
 
@@ -655,9 +676,13 @@ def main():
         print "----------------------------Running K-means------------------------------"
         numClusters = 20
         weightsFromLearn = [-0.060030265506692514, -0.44383045710403024, 3.4490915718474104, 3.695904771678345, 4.6554185014126634, 5.0456856919515936, 3.139756095232522]
-        centroids, assignments = kMeansAllSongs(newDict, weightsFromLearn, numClusters, 75)
+        # centroids, assignments = kMeansAllSongs(newDict, weightsFromLearn, numClusters, 75)
+        centroids = load("../centroids_20")
+        assignments = load("../assignments_20")
         loss = succinctLoss(assignments, numClusters)
+        loss2 = calculateClusteringConsistency(newDict, weightsFromLearn, numClusters)
         print "Clustered with Loss: " + str(loss)
+        print "Consistency Loss of: " + str(loss2)
         print "---------------------------Completed K-means-----------------------------"
     elif ('-x', '') in options:
         print "-----------------------Loading Song Data from Pickle------------------------"
@@ -666,19 +691,23 @@ def main():
         print "----------------------------Running H-clustering------------------------------"
         numClusters = 20
         centroids, assignments = HClusterAllSongs(newDict, numClusters)
+        loss2 = calculateClusteringConsistencyH(newDict, numClusters)
         loss = succinctLoss(assignments, numClusters)
         print "Clustered with Loss: " + str(loss)
+        print "Consistency loss of: " + str(loss2)
         print "---------------------------Completed H-clustering-----------------------------"
     elif ('-z', '') in options:
         print "-----------------------Loading Song Data from Pickle------------------------"
         newDict = load("../songsDict")
         print "--------------------------Data Loading is Complete--------------------------"
-        print "----------------------------Running H-clustering------------------------------"
+        print "----------------------------Running Random------------------------------"
         numClusters = 4
         centroids, assignments = randomClusters(newDict, numClusters)
         loss = succinctLoss(assignments, numClusters)
+        loss2 = calculateClusteringConsistencyRandom(newDict, numClusters)
         print "Clustered with Loss: " + str(loss)
-        print "---------------------------Completed H-clustering-----------------------------"
+        print "Consistency Loss of: " + str(loss2)
+        print "---------------------------Completed Random-----------------------------"
     elif ('-p', '') in options: #TODO=-==============GENERALIZE TO NUMCLUSTERS========
         #H-clustering algorithm
         numClusters = 4
