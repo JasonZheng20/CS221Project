@@ -14,7 +14,6 @@ import pickle
 #***************************************************************************************
 class Recommend:
 	thetas = {
-		'year':1.8,
    		'duration':1.3,
     	'key':1,
     	'generalLoudness':3,
@@ -28,7 +27,8 @@ class Recommend:
 
 		#every single song that we have access to
 		self.all_songs = h5reader.load("../songsDict")
-		self.all_song_centroids, self.all_song_assignments = h5reader.kMeansAllSongs(self.all_songs, 20, 100) 
+		self.all_song_centroids = h5reader.load("../centroids")
+		self.all_song_assignments = h5reader.load("../assignments")
 
 		#playlist of first person
 		self.playList1 = playList1
@@ -140,9 +140,6 @@ class Recommend:
 		for song_id in assigned:
 			song = self.all_songs[song_id]
 
-			new_centroid.year += song.year
-			totals['year'] = totals.get('year',0) + (song.year>0)
-
         	new_centroid.duration += song.duration
            	totals['duration'] = totals.get('duration',0) + (song.duration>0)
 
@@ -171,7 +168,6 @@ class Recommend:
 
 	#helper function to divide every element by the total to get the average
 	def divide(self, song, factors):
-		song.year = song.year / float(max(1, factors['year']))
 		song.duration = song.duration / float(max(1, factors['duration']))
 		song.key = song.key / float(max(1, factors['key']))
 		song.generalLoudness = song.generalLoudness / float(max(1, factors['generalLoudness']))
@@ -226,7 +222,7 @@ class Recommend:
 		choice = random.random()
 		start = .5
 		index = 0
-		while(index < len(best_songs and start > choice)):
+		while(index < len(best_songs)-1 and start > choice):
 			start = start/2
 			index += 1
 		best_song = best_songs[index][0]
@@ -235,12 +231,11 @@ class Recommend:
 		self.current_artist = best_song.artistName
 		self.current_trackid = best_song.trackid
 		self.recent_songs.popleft()
-		self.recent_songs.append(min_song.trackid)
+		self.recent_songs.append(best_song.trackid)
 
 	#find distance between two songs
 	def distance(self, centroid, song):
-		distance =  self.thetas['year']*abs(centroid.year - song.year)
-		distance += self.thetas['duration']*abs(centroid.duration - song.duration)
+		distance = self.thetas['duration']*abs(centroid.duration - song.duration)
 		distance += self.thetas['key']*abs(centroid.key - song.key)
 		distance += self.thetas['generalLoudness']*abs(centroid.generalLoudness - song.generalLoudness)
 		distance += self.thetas['mode']*abs(centroid.mode - song.mode)
@@ -258,7 +253,7 @@ class Recommend:
 		for term in song_term_keys:
 			cent_val = centroid.terms.get(term, (0,0))
 			song_val = song.terms[term]
-			distance += sqrt((cent_val[0]-song_val[0])**2 + (cent_val[1]-song_val[1])**2)
+			distance += abs(cent_val[0]-song_val[0])
 			total += 1
 		return distance/total
 
@@ -269,8 +264,11 @@ class Recommend:
 			self.combined_playlist[self.current_trackid] = \
 				self.combined_playlist.get(self.current_trackid, 0) + 1
 		elif(action == "skip"): #dislike the song so move on
-			self.combined_playlist[self.current_trackid] = \
-			self.combined_playlist.get(self.current_trackid, 0) - 1
+			if(self.current_trackid in self.combined_playlist or 
+						self.current_trackid in self.playList1 or
+						self.current_trackid in self.playList2):
+				self.combined_playlist[self.current_trackid] = \
+					self.combined_playlist.get(self.current_trackid, 0) - 1
 		else:
 			return
 		self.cluster() # changed some stuff so re-cluster everything 
