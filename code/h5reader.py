@@ -15,7 +15,8 @@ import pickle
 import random
 import math
 import numpy as np
-from scipy import spatial
+import pandas
+import scipy
 
 #-------------------------------------------------------------------------------
 #randomCentroids(songsDict, numCentroids)
@@ -42,7 +43,7 @@ def constructCentroid(d, k, l, m, t, s,terms):
     newCentroid.mode = m
     newCentroid.tempo = t
     newCentroid.timeSigniature = s
-    newCentroid.terms = terms
+    # newCentroid.terms = terms
     return newCentroid
 
 #-------------------------------------------------------------------------------
@@ -62,10 +63,8 @@ def distanceSongs(song1, song2, weights):
         distance += weights[4]*abs(song1.tempo - song2.tempo)
     if song2.timeSigniatureConfidence > 0:
         distance += weights[5]*abs(song1.timeSigniature - song2.timeSigniature)
-    distance += 11*weights[6]*term_distance(song1,song2)
-    distance += 17*weights[6]*term_distance(song1,song2)
+    # distance += 11*weights[6]*term_distance(song1,song2)
     return distance
-
 
 def term_distance(centroid, song):
     song_term_keys = set(song.terms.keys())
@@ -85,8 +84,6 @@ def term_distance(centroid, song):
 #songs using K-means clustering algorithm.
 #currently storing each thing as the song object itself, due to computation ease
 #returns centroids and clusterings
-
-#TODO: update kMeans so that it works on an arbitrary number of fields, as described above
 #-------------------------------------------------------------------------------
 def kMeansAllSongs(songsDict, weights, numCentroids = 5, T = 1000):
     centroids = randomCentroids(songsDict, numCentroids)
@@ -133,25 +130,20 @@ def kMeansAllSongs(songsDict, weights, numCentroids = 5, T = 1000):
                 if thisSong.timeSigniatureConfidence != 0:
                     clusterTotalTimeSig += thisSong.timeSigniature
                     numFieldsGiven[4] += 1
-                for term in thisSong.terms.keys():
-                    song_val = thisSong.terms[term]
-                    values = new_terms.get(term,(0,0))
-                    new_terms[term] = (song_val[0]+values[0], song_val[0]+values[1])
-                total_terms+=1
+                # for term in thisSong.terms.keys():
+                #     song_val = thisSong.terms[term]
+                #     values = new_terms.get(term,(0,0))
+                #     new_terms[term] = (song_val[0]+values[0], song_val[0]+values[1])
+                # total_terms+=1
             avgDuration = clusterTotalDuration / numFieldsGiven[1]
             avgKey = clusterTotalKeys / totals[j]
             avgLoudness = clusterTotalLoudness / totals[j]
             avgMode = clusterTotalMode / numFieldsGiven[2]
             avgTempo = clusterTotalTempo / numFieldsGiven[3]
             avgTimeSig = clusterTotalTimeSig / numFieldsGiven[4]
-
-
-
-
-            for term in new_terms.keys():
-                values = new_terms[term]
-                new_terms[term] = ((values[0]+.1)/total_terms,(values[1]+.1)/total_terms)
-
+            # for term in new_terms.keys():
+            #     values = new_terms[term]
+            #     new_terms[term] = ((values[0]+.1)/total_terms,(values[1]+.1)/total_terms)
             new_centroids[j] = constructCentroid(avgDuration, avgKey, avgLoudness, avgMode, avgTempo, avgTimeSig, new_terms)
         if new_centroids == centroids:
             print "CONVERGENCE AFTER " + str(i) + " TRIALS"
@@ -416,6 +408,129 @@ def learnDistanceWeights(songsDict):
     print best_weights
 
 #-------------------------------------------------------------------------------
+#translateSongToDataArray()
+
+#Takes a Song class and translates it into a data array for K-means visualization
+#-------------------------------------------------------------------------------
+def translateSongToDataArray(Song):
+    dataArray = []
+    dataArray.append(Song.duration)
+    dataArray.append(Song.key)
+    dataArray.append(Song.generalLoudness)
+    dataArray.append(Song.mode)
+    dataArray.append(Song.tempo)
+    dataArray.append(Song.timeSigniature)
+    return dataArray
+
+#-------------------------------------------------------------------------------
+#clusterVisualization()
+
+#Attempt to visualize our K-means clusters
+#-------------------------------------------------------------------------------
+def clusterVisualization(centroids, assignments, songsDict):
+    kmeansdata = []
+    for song in songsDict:
+        kmeansdata.append(translateSongToDataArray(songsDict[song]))
+    centroid_list = []
+    for centroid in centroids:
+        centroid_list.append(translateSongToDataArray(centroid))
+    label_list = [] #need to make it all songs, each song has #centroid
+    for song in songsDict:
+        for i in xrange(0,len(assignments)):
+            if songsDict[song] in assignments[i]:
+                label_list.append(i) #index of that centroid list
+    # print centroid_list
+    # print label_list
+    # print kmeansdata
+    sa = scipy.array(kmeansdata)
+    cl = scipy.array(centroid_list)
+    ll = scipy.array(label_list)
+    plot_cluster(sa, cl, ll, 5)
+
+import numpy
+import colorsys
+import random
+import os
+from matplotlib.mlab import PCA as mlabPCA
+from matplotlib import pyplot as plt
+
+
+def get_colors(num_colors):
+    colors = []
+    random_colors = []
+    # Generate 256 different colors and choose num_clors randomly
+    for i in numpy.arange(0., 360., 360. / 256.):
+        hue = i / 360.
+        lightness = (50 + numpy.random.rand() * 10) / 100.
+        saturation = (90 + numpy.random.rand() * 10) / 100.
+        colors.append(colorsys.hls_to_rgb(hue, lightness, saturation))
+
+    for i in range(0, num_colors):
+        random_colors.append(colors[random.randint(0, len(colors) - 1)])
+    return random_colors
+
+
+def random_centroid_selector(total_clusters , clusters_plotted):
+    """
+    Function to generate a list of randomly selected
+    centroids to plot on the output png
+    total_clusters        -> Total number of clusters
+    clusters_plotted      -> Number of clusters to plot
+    random_list           -> Contains the index of clusters
+                             to be plotted
+    """
+    random_list = []
+    for i in range(0 , clusters_plotted):
+        random_list.append(random.randint(0, total_clusters - 1))
+    return random_list
+
+def plot_cluster(kmeansdata, centroid_list, label_list , num_cluster):
+    """
+    Function to convert the n-dimensional cluster to
+    2-dimensional cluster and plotting 50 random clusters
+    file%d.png    -> file where the output is stored indexed
+                     by first available file index
+                     e.g. file1.png , file2.png ...
+    """
+    mlab_pca = mlabPCA(kmeansdata)
+    cutoff = mlab_pca.fracs[1]
+    users_2d = mlab_pca.project(kmeansdata, minfrac=cutoff)
+    centroids_2d = mlab_pca.project(centroid_list, minfrac=cutoff)
+
+
+    colors = get_colors(num_cluster)
+    plt.figure()
+    plt.xlim([users_2d[:, 0].min() - 3, users_2d[:, 0].max() + 3])
+    plt.ylim([users_2d[:, 1].min() - 3, users_2d[:, 1].max() + 3])
+
+    # Plotting 50 clusters only for now
+    random_list = random_centroid_selector(num_cluster , 50)
+
+    # Plotting only the centroids which were randomly_selected
+    # Centroids are represented as a large 'o' marker
+    for i, position in enumerate(centroids_2d):
+        if i in random_list:
+            plt.scatter(centroids_2d[i, 0], centroids_2d[i, 1], marker='o', c=colors[i], s=100)
+
+
+    # Plotting only the points whose centers were plotted
+    # Points are represented as a small '+' marker
+    for i, position in enumerate(label_list):
+        if position in random_list:
+            plt.scatter(users_2d[i, 0], users_2d[i, 1] , marker='+' , c=colors[position])
+
+    filename = "K-means_Disregard_TimeSig_2D_Clusters"
+    i = 0
+    while True:
+        if os.path.isfile(filename + str(i) + ".png") == False:
+            #new index found write file and return
+            plt.savefig(filename + str(i) + ".png")
+            break
+        else:
+            #Changing index to next number
+            i = i + 1
+    return
+#-------------------------------------------------------------------------------
 #Main Function:
 
 # Usage:
@@ -443,10 +558,14 @@ def main():
         print "------------------------Learning Parameter Weights--------------------------"
         learnDistanceWeights(newDict)
     elif ('-i', '') in options:
+        print "-----------------------Loading Song Data from Pickle------------------------"
+        newDict = load("../songsDict")
+        print "--------------------------Data Loading is Complete--------------------------"
         print "---------------------Loading Clusterings from Pickle------------------------"
         centroids = load("../centroids")
         assignments = load("../assignments")
         print "----------------------Loaded Clusterings from Pickle------------------------"
+        clusterVisualization(centroids, assignments, newDict)
     elif ('-t', '') in options:
         print "-----------------------Loading Song Data from Pickle------------------------"
         newDict = load("../songsDict")
