@@ -24,6 +24,7 @@ import random
 import os
 from matplotlib.mlab import PCA as mlabPCA
 from matplotlib import pyplot as plt
+import matplotlib.cm as cm
 from sklearn.cluster import AgglomerativeClustering
 
 #-------------------------------------------------------------------------------
@@ -449,8 +450,9 @@ def plot_cluster(kmeansdata, centroid_list, label_list , num_cluster):
     cutoff = mlab_pca.fracs[1]
     users_2d = mlab_pca.project(kmeansdata, minfrac=cutoff)
     centroids_2d = mlab_pca.project(centroid_list, minfrac=cutoff)
+    colors = [(0,0,0), (0.33,1,0), (1,0,0), (1,1,0)] #TODO CHANGE TO GENERALIZE FOR MORE CLUSTERS
     # colors = [(0,0,0), (0.33,1,0), (1,0,0), (1,1,0), (0,0.33,1)] #TODO CHANGE TO GENERALIZE FOR MORE CLUSTERS
-    colors = [(0,0,0), (1,0,0), (0,1,0), (0,0,1), (1,1,0), (1,0,1), (0,0,1), (0.33,0,0), (0,0.33,0), (0,0,0.33), (0.33, 1, 0), (0.33,0,1), (0.33,1,1), (1,0.33,0), (1,0.33,1), (0,0.33,1), (0.33,0.33,0.33), (0.33,0.33,0), (0,0.33,0.33), (0.33,0,0.33)]
+    # colors = [(0,0,0), (1,0,0), (0,1,0), (0,0,1), (1,1,0), (1,0,1), (0,0,1), (0.33,0,0), (0,0.33,0), (0,0,0.33), (0.33, 1, 0), (0.33,0,1), (0.33,1,1), (1,0.33,0), (1,0.33,1), (0,0.33,1), (0.33,0.33,0.33), (0.33,0.33,0), (0,0.33,0.33), (0.33,0,0.33)]
     plt.figure()
     plt.xlim([users_2d[:, 0].min() - 3, users_2d[:, 0].max() + 3])
     plt.ylim([users_2d[:, 1].min() - 3, users_2d[:, 1].max() + 3])
@@ -461,7 +463,7 @@ def plot_cluster(kmeansdata, centroid_list, label_list , num_cluster):
     for i, position in enumerate(label_list):
         if position in random_list:
             plt.scatter(users_2d[i, 0], users_2d[i, 1] , marker='+' , c=colors[position])
-    filename = "H-Clustering_2D_20"
+    filename = "H-clustering_2D_4"
     i = 0
     while True:
         if os.path.isfile(filename + str(i) + ".png") == False:
@@ -470,6 +472,44 @@ def plot_cluster(kmeansdata, centroid_list, label_list , num_cluster):
         else:
             i = i + 1
     return
+
+#-------------------------------------------------------------------------------
+# def plotSongField()
+
+#plots the specified field for all songs in dict.
+#-------------------------------------------------------------------------------
+def plotSongField(songsDict, field):
+    print "Creating plot for field: " + str(field)
+    xran = [i for i in xrange(0,10000)]
+    fieldVals = []
+    minFieldVal = 0
+    maxFieldVal = 2500
+    for song in songsDict:
+        trueSong = songsDict[song]
+        value = trueSong.duration
+        if value < minFieldVal: minFieldVal = value
+        elif value > maxFieldVal: maxFieldVal = value
+        fieldVals.append(value)
+    plt.plot(xran, fieldVals, 'ro')
+    plt.axis([0, 10000, minFieldVal, maxFieldVal])
+    plt.show()
+
+def plotHistogram(songsDict):
+    x = []
+    for song in songsDict:
+        trueSong = songsDict[song]
+        value = trueSong.timeSigniature
+        x.append(value)
+    # x = np.random.normal(size = 1000)
+    plt.hist(x, normed=True, bins=30)
+    plt.ylabel('Probability')
+    plt.title('Distribution of Song Time Signature')
+    plt.xlabel('Time Signature')
+    plt.savefig('TimeSig.png', bbox_inches='tight')
+    # dataArray.append(Song.mode)
+    # dataArray.append(Song.tempo)
+    # dataArray.append(Song.timeSigniature)
+
 #-------------------------------------------------------------------------------
 #Main Function:
 
@@ -483,11 +523,12 @@ CONST_FILLER_SONG = Song('filler')
 CONST_FILLER_SONG.year = float('inf')
 
 def main():
-    (options, args) = getopt.getopt(sys.argv[1:], 'sclityp')
+    (options, args) = getopt.getopt(sys.argv[1:], 'sclitypw')
     if ('-s','') in options: #save the Songs Pickle
         readAndSavePickle('../data/MillionSongSubset/AdditionalFiles/subset_unique_tracks.txt') #(~1 min 50 seconds)
     elif ('-c', '') in options: #save the Clusters Pickle
-        numClusters = 20
+        # numClusters = 20
+        numClusters = 4
         print "-----------------------Loading Song Data from Pickle------------------------"
         newDict = load("../songsDict")
         print "--------------------------Data Loading is Complete--------------------------"
@@ -500,6 +541,7 @@ def main():
         numClusters = 20
         learnDistanceWeights(newDict, numClusters)
     elif ('-i', '') in options:
+        numClusters = 4
         print "-----------------------Loading Song Data from Pickle------------------------"
         newDict = load("../songsDict")
         print "--------------------------Data Loading is Complete--------------------------"
@@ -510,7 +552,7 @@ def main():
         assignLengths = [len(assign) for assign in assignments]
         print assignLengths
         print "----------------------Loaded Clusterings from Pickle------------------------"
-        clusterVisualization(centroids, assignments, newDict, 20)
+        clusterVisualization(centroids, assignments, newDict, 4)
     elif ('-t', '') in options:
         print "-----------------------Loading Song Data from Pickle------------------------"
         newDict = load("../songsDict")
@@ -524,7 +566,7 @@ def main():
         print "---------------------------Completed K-means-----------------------------"
     elif ('-p', '') in options: #TODO=-==============GENERALIZE TO NUMCLUSTERS========
         #H-clustering algorithm
-        numClusters = 20
+        numClusters = 4
         Hclustering = AgglomerativeClustering(n_clusters=numClusters, affinity='euclidean', linkage='ward')
         newDict = load("../songsDict")
         kmeansdata = []
@@ -571,6 +613,12 @@ def main():
         cl = scipy.array(centroid_list)
         ll = scipy.array(assigns)
         plot_cluster(sa, cl, ll, numClusters)
+    elif ('-w', '') in options:
+        print "-----------------------Loading Song Data from Pickle------------------------"
+        newDict = load("../songsDict")
+        print "--------------------------Data Loading is Complete--------------------------"
+        # plotSongField(newDict, 'duration')
+        plotHistogram(newDict)
     else:
         print "Usage: -s to read and save songs, -c to load songs and save clusters, -l to load songs and learn weights, -i to load saved cluster data"
 
