@@ -345,7 +345,7 @@ def readAndSaveClusters(songsDict, numClusters = 5):
     print "----------------------Saving Clusterings to Pickle-----------------------"
     save(centroids, "../centroids")
     save(assignments, "../assignments")
-    print "---------------------Done Saving Clusters to Pickle----------------------"
+    print "---------------------dista Saving Clusters to Pickle----------------------"
     return centroids, assignments
 
 #-------------------------------------------------------------------------------
@@ -625,3 +625,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
