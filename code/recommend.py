@@ -300,6 +300,9 @@ for line in play:
 recommend = Recommend(playList1,playList2)
 current_song = recommend.current_song
 current_artist = recommend.current_artist
+valid = 0.0
+total = 0.0
+overtime = []
 while(True):
 	choice = raw_input("Your current song is \"" + current_song + "\" by " + current_artist + " would you like to play or skip (enter quit to exit) ").lower()
 	if(choice == "quit"):
@@ -308,8 +311,14 @@ while(True):
 		recommend.recommend(choice)
 		current_song = recommend.current_song
 		current_artist = recommend.current_artist
+		if(choice == "play"):
+			valid += 1.0
+		total += 1.0
+		print("percentage that are correct: \t" + str(valid/total))
+		overtime.append(valid/total)
 	else:
 		print("I'm sorry, you need to enter 'play' 'skip' or 'quit'")
+print overtime
 
 
 
